@@ -1,0 +1,12 @@
+{
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "context7"
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(dir .specifyscriptspowershell)"
+    ]
+  }
+}
