@@ -830,7 +830,7 @@ frontend/tests/
 
 ---
 
-## **BONUS FEATURES (OPTIONAL)**
+## **BONUS FEATURES**
 
 ---
 
