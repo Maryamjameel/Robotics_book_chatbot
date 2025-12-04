@@ -1,0 +1,1080 @@
+---
+id: chapter-02
+title: "Chapter 2: Robot Simulation & AI Perception"
+authors:
+  - name: "Robotics Textbook Team"
+    title: "Physical AI & Humanoid Robotics"
+date: "2025-12-04"
+tags: ["simulation", "gazebo", "isaac-sim", "perception", "slam", "nav2", "robotics"]
+---
+
+# Chapter 2: Robot Simulation & AI Perception
+
+## Learning Objectives
+
+By the end of this chapter, students will be able to:
+
+1. Design and execute physics simulations of robotic systems using Gazebo and NVIDIA Isaac Sim
+2. Implement visual perception pipelines including sensor simulation and SLAM algorithms
+3. Deploy navigation stacks using Nav2 with behavior trees
+4. Analyze and optimize sim-to-real transfer for real-world deployment
+5. Integrate NVIDIA Isaac Sim workflows for synthetic data generation and robot training
+
+---
+
+## Introduction
+
+In Chapter 1, we learned that physical AI systems must respect gravity, friction, latency, and power constraints. Building a robot controller and deploying it directly on hardware is risky: errors can damage expensive equipment, injure people, or waste weeks of development time debugging on physical systems.
+
+**Simulation** solves this problem. A simulator is a software environment that mimics physical reality: gravity pulls objects down, robots collide with obstacles, sensors produce realistic noise, and physics laws are enforced. Simulations let engineers test control algorithms safely, rapidly iterate on designs, and gather large datasets for training machine learning models.
+
+This chapter addresses a critical workflow in modern robotics: **design → simulate → validate → deploy**. We will explore two industry-standard simulation platforms: Gazebo (open-source, physics-accurate) and NVIDIA Isaac Sim (GPU-accelerated, photorealistic). Then we will examine perception: how robots see and understand their environments. This requires understanding camera models, 3D sensing (depth cameras, LiDAR), and algorithms like **SLAM (Simultaneous Localization and Mapping)** that enable robots to map unknown environments while tracking their own pose.
+
+Finally, we will explore autonomous navigation using **Nav2**, which combines perception with path planning to enable robots to autonomously navigate complex environments while avoiding obstacles.
+
+By the end of this chapter, you will understand how to simulate complete robot systems, implement perception algorithms, and deploy full navigation stacks on real hardware.
+
+---
+
+## 2.1: Physics Simulation Foundations: Gazebo
+
+**Gazebo** is an open-source 3D robot simulator that integrates with ROS 2. It provides realistic physics simulation, sensor simulation with configurable noise models, and plugin-based extensibility.
+
+### 2.1.1: Gazebo Architecture
+
+Gazebo consists of three primary components:
+
+**Server (gzserver)**: Runs physics simulation, manages world state, updates sensors, and processes plugin computations. The server runs independently of visualization.
+
+**Client (gzclient)**: Provides a 3D graphical interface for visualization and interactive control. Multiple clients can connect to a single server.
+
+**Plugins**: Extend Gazebo by implementing custom sensors, controllers, and physics behaviors. Gazebo uses a plugin architecture, allowing developers to extend functionality without modifying core code.
+
+The physics engine options include:
+
+- **ODE (Open Dynamics Engine)**: Accurate, widely used, stable for many robotic systems
+- **Bullet Physics**: Good collision detection, faster computation
+- **DART (Dynamic Animation and Robotics Toolkit)**: Supports complex articulated systems, contact-rich dynamics
+
+### 2.1.2: World Description and SDF Format
+
+**SDF (Simulation Description Format)** is an XML format similar to URDF but with additional simulation parameters. An SDF world file defines:
+
+- **Physics engine** and parameters (gravity, solver, time step)
+- **Models** (robots, objects) with their poses and properties
+- **Lighting** and visual environment settings
+- **Plugins** for sensors and custom behaviors
+
+Here is a minimal SDF world file:
+
+```xml
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="default_world">
+    <!-- Physics engine configuration -->
+    <physics name="default_physics" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <gravity>0 0 -9.81</gravity>
+    </physics>
+
+    <!-- Lighting -->
+    <light name="sun" type="directional">
+      <direction>0.5 0.5 1</direction>
+      <diffuse>1 1 1 1</diffuse>
+    </light>
+
+    <!-- Ground plane -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Robot model (reference) -->
+    <include>
+      <uri>model://robot_name</uri>
+      <pose>0 0 0.5 0 0 0</pose>
+    </include>
+  </world>
+</sdf>
+```
+
+### 2.1.3: Sensor Simulation with Realistic Noise Models
+
+Gazebo simulates cameras, depth sensors, and LiDAR with configurable noise. Real sensors are imperfect: cameras have exposure noise (Gaussian noise in pixel values), depth sensors have measurement bias and variance, and LiDAR returns have angular quantization and range uncertainty.
+
+**Camera Sensor Configuration:**
+
+```xml
+<sensor name="camera" type="camera">
+  <pose>0.1 0 0.5 0 0 0</pose>
+  <camera>
+    <horizontal_fov>1.047</horizontal_fov>
+    <image>
+      <width>640</width>
+      <height>480</height>
+      <format>R8G8B8</format>
+    </image>
+    <clip>
+      <near>0.1</near>
+      <far>100</far>
+    </clip>
+    <noise>
+      <type>gaussian</type>
+      <mean>0</mean>
+      <stddev>0.02</stddev>
+    </noise>
+  </camera>
+  <plugin
+    filename="libgazebo_ros_camera.so"
+    name="camera_plugin">
+    <ros>
+      <remapping>~/image_raw:=camera/image_raw</remapping>
+      <remapping>~/camera_info:=camera/camera_info</remapping>
+    </ros>
+    <camera_name>camera</camera_name>
+    <frame_name>camera_frame</frame_name>
+  </plugin>
+</sensor>
+```
+
+**Depth Sensor (RGB-D) Configuration:**
+
+A depth camera produces a color image and a depth map, where each pixel contains distance to the nearest surface.
+
+```xml
+<sensor name="depth_camera" type="depth_camera">
+  <pose>0.1 0 0.5 0 0 0</pose>
+  <camera>
+    <horizontal_fov>1.047</horizontal_fov>
+    <image>
+      <width>640</width>
+      <height>480</height>
+    </image>
+    <clip>
+      <near>0.1</near>
+      <far>10.0</far>
+    </clip>
+  </camera>
+  <plugin
+    filename="libgazebo_ros_camera.so"
+    name="depth_camera_plugin">
+    <ros>
+      <remapping>~/camera_info:=depth/camera_info</remapping>
+      <remapping>~/image_raw:=depth/image_raw</remapping>
+    </ros>
+    <camera_name>depth</camera_name>
+    <frame_name>depth_frame</frame_name>
+  </plugin>
+</sensor>
+```
+
+### 2.1.4: ROS 2 Integration via Gazebo Plugins
+
+Gazebo publishes simulated sensor data (camera frames, depth maps, LiDAR scans) to ROS 2 topics via **gazebo_ros** plugins. These plugins create a bridge between the simulator and the ROS 2 ecosystem.
+
+When you launch Gazebo with a robot that has camera plugins configured, the simulator automatically:
+1. Renders camera images at each time step
+2. Applies configured noise models
+3. Publishes images to ROS 2 topics (e.g., `/camera/image_raw`)
+4. Publishes camera calibration (camera info) to `/camera/camera_info`
+
+This allows ROS 2 perception nodes running on your computer to subscribe to these topics and process simulated sensor data exactly as they would process real camera data.
+
+### 2.1.5: Rigid Body Dynamics in Simulation
+
+The core of a physics simulator is the **rigid body dynamics engine**, which integrates Newton's second law:
+
+$$
+\mathbf{F} = m\mathbf{a}
+$$
+
+For rotational motion:
+
+$$\tau = I\alpha$$
+
+where F is force (N), m is mass (kg), a is acceleration (m/s²), τ (tau) is torque (N·m), I is the inertia matrix (kg·m²), and α (alpha) is angular acceleration (rad/s²).
+
+The physics engine discretizes time into small steps ($\Delta t$, typically 0.001 seconds) and numerically integrates these differential equations using methods like semi-implicit Euler or RK4 (Runge-Kutta order 4). At each step:
+
+1. Compute forces and torques (gravity, applied forces, contact forces)
+2. Compute accelerations: a = F/m, α = I⁻¹τ
+3. Update velocities: v = v + a Δt
+4. Update positions: p = p + v Δt
+
+Smaller time steps increase accuracy but increase computational cost. Modern simulators typically use $\Delta t = 0.001$ s (1000 Hz simulation frequency).
+
+---
+
+## 2.2: Advanced Simulation: NVIDIA Isaac Sim
+
+**NVIDIA Isaac Sim** is a GPU-accelerated simulator built on NVIDIA Omniverse. Unlike Gazebo (CPU-based), Isaac Sim leverages GPUs for:
+
+- **Physics simulation**: GPU-parallelized rigid body dynamics
+- **Rendering**: Real-time photorealistic graphics
+- **Synthetic data generation**: High-speed image rendering at thousands of frames per second with domain randomization
+
+### 2.2.1: Isaac Sim Ecosystem and Advantages
+
+Isaac Sim integrates with:
+
+- **NVIDIA Isaac ROS**: ROS 2 packages optimized for NVIDIA hardware
+- **NVIDIA CUDA**: GPU-accelerated perception pipelines
+- **NVIDIA TAO Framework**: Transfer learning for computer vision models
+- **Omniverse**: Industry-standard 3D collaboration platform
+
+**Advantages of Isaac Sim over Gazebo:**
+
+| Feature | Gazebo | Isaac Sim |
+|---------|--------|-----------|
+| **Physics Engine** | CPU-based (ODE, Bullet, DART) | GPU-accelerated (PhysX) |
+| **Rendering** | Simple shading | Photorealistic (ray tracing, RTX) |
+| **Throughput** | 1-10 simulations parallel | 100+ simulations parallel |
+| **Synthetic Data** | Limited domain randomization | Full procedural generation |
+| **Learning Curve** | Moderate | Steeper (requires Omniverse knowledge) |
+| **Cost** | Free (open-source) | Free but NVIDIA GPU required |
+
+### 2.2.2: Synthetic Data Generation for AI Training
+
+A critical application of Isaac Sim is **synthetic data generation**: training machine learning models on simulated data to avoid expensive real-world data collection.
+
+For example, to train an object detector that works on robot vision systems, you would:
+
+1. **Create photorealistic 3D scenes** in Isaac Sim with objects, lighting, and camera viewpoints
+2. **Apply domain randomization**: systematically vary object textures, lighting conditions, camera parameters, and poses
+3. **Render images at high speed**: Isaac Sim can generate millions of labeled images
+4. **Train on synthetic data**: Feed these images to computer vision models (YOLO, Mask R-CNN, etc.)
+5. **Deploy on real robots**: The trained model generalizes to real camera feeds
+
+**Domain Randomization Factors:**
+
+```python
+# Example domain randomization configuration
+domain_randomization = {
+    "lighting": {
+        "intensity": (0.5, 2.0),  # Light intensity range
+        "angle": (0, 360),          # Light direction
+        "color_temp": (3000, 6500)  # Color temperature (Kelvin)
+    },
+    "materials": {
+        "roughness": (0.0, 1.0),    # Surface roughness
+        "metallic": (0.0, 1.0),     # Metallic property
+        "albedo": "random_colors"   # Random textures
+    },
+    "camera": {
+        "focal_length": (20, 200),  # mm
+        "fov": (30, 120)            # Degrees
+    },
+    "pose": {
+        "translation": ((-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)),  # Offset range
+        "rotation": (0, 360)        # Rotation degrees
+    }
+}
+```
+
+By randomizing these factors, models trained on synthetic data generalize better to real-world variations.
+
+### 2.2.3: GPU-Accelerated Physics and Scalability
+
+Isaac Sim's GPU-accelerated physics engine (NVIDIA PhysX) enables:
+
+- **Massive parallelism**: Simulate hundreds of robots and objects simultaneously
+- **Scalable learning**: Train robot controllers on thousands of parallel simulations
+- **Real-time performance**: Handle complex scenes (thousands of objects) at 60+ Hz
+
+This enables **reinforcement learning workflows** where thousands of simulation instances run in parallel, each collecting experience data for training. For example, training a bipedal walking controller might require millions of simulation steps—something that would take weeks on a CPU simulator but days on GPU-accelerated Isaac Sim.
+
+### 2.2.4: Sim-to-Real Transfer and Domain Gap
+
+A fundamental challenge in robotics is the **sim-to-real gap**: models trained in simulation often fail on real hardware due to:
+
+- **Sensor differences**: Simulated cameras produce perfect images; real cameras have noise, blur, and artifacts
+- **Physics modeling errors**: Friction coefficients, contact models, and material properties are approximations
+- **Actuator differences**: Real actuators have backlash, latency, and non-linearities
+- **Environmental variations**: Lighting, textures, and layouts differ between simulation and reality
+
+**Strategies to Close the Sim-to-Real Gap:**
+
+1. **Domain Randomization**: Vary simulation parameters so models see diverse conditions
+2. **System Identification**: Measure real robot parameters and tune simulation to match
+3. **Sensor Simulation**: Add realistic noise and artifacts to simulated sensors
+4. **Adaptive Control**: Design controllers robust to model uncertainty
+
+---
+
+## 2.3: Visual Perception Foundations
+
+For robots to navigate and manipulate objects, they must perceive their environment. **Visual perception** transforms raw sensor data (pixels, point clouds) into actionable information (object locations, free space, obstacles).
+
+### 2.3.1: The Pinhole Camera Model
+
+The simplest model of image formation is the **pinhole camera model**, which projects 3D world points onto a 2D image plane through geometric projection.
+
+A 3D point $\mathbf{P} = (X, Y, Z)^T$ in the world frame projects to a 2D point $\mathbf{p} = (u, v)^T$ in the image plane via:
+
+$$
+s\begin{pmatrix} u \\ v \\ 1 \end{pmatrix} = \mathbf{K} [\mathbf{R} | \mathbf{t}] \begin{pmatrix} X \\ Y \\ Z \\ 1 \end{pmatrix}
+$$
+
+where:
+- $s$ is a scale factor
+- $\mathbf{K}$ is the **camera intrinsic matrix** (depends on focal length and principal point)
+- $[\mathbf{R} | \mathbf{t}]$ is the **camera pose** (rotation $\mathbf{R}$ and translation $\mathbf{t}$)
+
+The intrinsic matrix is:
+
+$$
+\mathbf{K} = \begin{pmatrix} f_x & 0 & c_x \\ 0 & f_y & c_y \\ 0 & 0 & 1 \end{pmatrix}
+$$
+
+where:
+- $f_x, f_y$ are focal lengths in pixels (typically equal for modern cameras)
+- $c_x, c_y$ is the principal point (image center)
+
+**Lens Distortion:**
+
+Real lenses introduce distortion (radial and tangential). These distortion parameters $k_1, k_2, k_3$ (radial) and $p_1, p_2$ (tangential) model how lenses deviate from the ideal pinhole model. To correct for distortion (during camera calibration), the inverse distortion model is applied, converting measured distorted pixels to undistorted coordinates.
+
+### 2.3.2: RGB-D and LiDAR Sensing
+
+**RGB-D Sensors** (e.g., Intel RealSense, Microsoft Kinect) combine:
+- **Color image**: Standard RGB image from an RGB camera
+- **Depth map**: Distance to surface for each pixel
+
+Depth can be measured via:
+- **Time-of-flight (ToF)**: Measure time for light to travel to surface and back
+- **Structured light**: Project a known pattern and triangulate from distortion
+- **Stereo**: Triangulate from two camera views
+
+**Point Cloud Processing:**
+
+A point cloud is a set of 3D points $\{\mathbf{p}_i\}$ representing the scene. Converting an RGB-D image to a point cloud:
+
+```python
+import numpy as np
+import cv2
+
+def depth_to_pointcloud(depth_image, camera_matrix):
+    """Convert depth image to point cloud."""
+    h, w = depth_image.shape
+    fx = camera_matrix[0, 0]
+    fy = camera_matrix[1, 1]
+    cx = camera_matrix[0, 2]
+    cy = camera_matrix[1, 2]
+
+    # Create pixel coordinate arrays
+    x_coords, y_coords = np.meshgrid(np.arange(w), np.arange(h))
+
+    # Compute 3D coordinates
+    z = depth_image
+    x = (x_coords - cx) * z / fx
+    y = (y_coords - cy) * z / fy
+
+    # Stack into point cloud (N x 3)
+    points = np.stack([x, y, z], axis=-1).reshape(-1, 3)
+
+    return points
+```
+
+**LiDAR Sensors** emit laser pulses and measure return time to build dense 3D maps. LiDAR data arrives as ranges $r_i$ and angles $(\theta_i, \phi_i)$ which convert to 3D points via spherical coordinates:
+
+$$
+X = r \sin(\phi) \cos(\theta), \quad Y = r \sin(\phi) \sin(\theta), \quad Z = r \cos(\phi)
+$$
+
+### 2.3.3: Feature Detection and Matching
+
+To track camera motion or detect objects, perception systems extract **visual features**: distinctive points or regions that can be matched across frames.
+
+**ORB (Oriented FAST and Rotated BRIEF):**
+
+A fast, rotation-invariant feature detector used in SLAM systems:
+
+```python
+import cv2
+import numpy as np
+
+def detect_orb_features(image, n_features=500):
+    """Detect ORB features in an image."""
+    orb = cv2.ORB_create(nfeatures=n_features)
+    keypoints, descriptors = orb.detectAndCompute(image, None)
+    return keypoints, descriptors
+
+def match_features(descriptors1, descriptors2):
+    """Match ORB descriptors between two images."""
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(descriptors1, descriptors2)
+    matches = sorted(matches, key=lambda x: x.distance)
+    return matches
+```
+
+**Other Feature Detectors:**
+- **SIFT (Scale-Invariant Feature Transform)**: Highly distinctive but computationally expensive
+- **AKAZE**: Fast, rotation-invariant, works with binary descriptors
+- **Harris corners**: Simple, fast corner detection
+
+---
+
+## 2.4: SLAM (Simultaneous Localization and Mapping)
+
+**SLAM** is the fundamental problem in robotics: a robot must localize itself (determine its pose) in an unknown environment while simultaneously building a map of that environment. SLAM is "simultaneous" because these tasks are coupled: errors in localization affect map quality and vice versa.
+
+### 2.4.1: Problem Formulation
+
+Let $\mathbf{x}_k = (\mathbf{p}_k, \mathbf{R}_k)$ be the robot pose (position and rotation) at time $k$, and let $\mathbf{m} = \{\mathbf{m}_1, \ldots, \mathbf{m}_n\}$ be the map (feature locations or occupancy grid). The SLAM problem is to estimate both $\mathbf{x}_k$ and $\mathbf{m}$ from:
+
+- **Control inputs** $\mathbf{u}_k$ (wheel odometry, IMU data)
+- **Observations** $\mathbf{z}_k$ (camera images, depth measurements)
+
+SLAM algorithms maintain:
+- **State estimate**: Current pose and map
+- **Uncertainty**: Covariance matrices quantifying confidence
+
+### 2.4.2: Visual SLAM (V-SLAM)
+
+Visual SLAM uses cameras to estimate motion and build maps. **ORB-SLAM2** is a popular open-source visual SLAM system.
+
+**ORB-SLAM2 Pipeline:**
+
+1. **Tracking**: Track features from previous frame to current frame
+2. **Local Mapping**: Insert tracked features into map, optimize recent poses (local bundle adjustment)
+3. **Loop Closure**: Detect when the robot returns to a previously visited location; correct accumulated drift
+
+**Epipolar Constraint:**
+
+When tracking features between two frames, the **epipolar constraint** provides geometric constraints on possible matches. If $\mathbf{p}_1 = (u_1, v_1)$ is a feature in frame 1 and $\mathbf{p}_2 = (u_2, v_2)$ is the corresponding feature in frame 2, then:
+
+$$
+\mathbf{p}_2^T \mathbf{F} \mathbf{p}_1 = 0
+$$
+
+where $\mathbf{F}$ is the **fundamental matrix** that encodes the geometric relationship between the two camera views. This constraint eliminates incorrect matches and enables robust feature tracking.
+
+**Motion Estimation via Essential Matrix:**
+
+From feature correspondences, we estimate the **essential matrix** $\mathbf{E}$, which decomposes into:
+
+$$
+\mathbf{E} = [\mathbf{t}]_\times \mathbf{R}
+$$
+
+where $[\mathbf{t}]_\times$ is the skew-symmetric cross-product matrix of translation $\mathbf{t}$, and $\mathbf{R}$ is the rotation matrix. This provides the camera motion (pose change) between frames.
+
+**Bundle Adjustment:**
+
+After tracking, SLAM systems optimize camera poses and 3D point positions by minimizing **reprojection error**:
+
+$$
+\mathcal{L} = \sum_{i,j} \left\| \mathbf{z}_{ij} - \pi(\mathbf{K}, \mathbf{x}_j, \mathbf{m}_i) \right\|^2
+$$
+
+where $\mathbf{z}_{ij}$ is the observed feature location, $\mathbf{x}_j$ is camera pose $j$, $\mathbf{m}_i$ is 3D point $i$, and $\pi$ is the projection function. Bundle adjustment simultaneously refines all camera poses and map points.
+
+### 2.4.3: Loop Closure Detection
+
+As a robot explores an environment, odometry errors accumulate (drift). When the robot returns to a previously visited location, **loop closure detection** recognizes this and corrects the drift.
+
+Loop closure is detected by:
+1. Computing **bag-of-words** descriptors of current images
+2. Querying a database of previous images for similar descriptors
+3. If sufficient similarity (visual overlap), computing the relative pose between the two frames
+4. Performing **pose graph optimization** to correct drift
+
+**Pose Graph Optimization:**
+
+A pose graph represents robot poses as nodes and relative pose measurements as edges. Loop closure adds a new edge constraint. Optimization then distributes the accumulated error across all poses:
+
+$$
+\mathcal{L} = \sum_{\text{edges}} \left\| \mathbf{x}_i^{-1} \mathbf{x}_j - \mathbf{u}_{ij} \right\|^2
+$$
+
+This is solved via graph optimization algorithms (g2o, Ceres).
+
+### 2.4.4: Multi-Sensor Fusion and Visual-Inertial Odometry
+
+**Visual-inertial odometry (VIO)** fuses visual features with IMU measurements to estimate motion between SLAM keyframes. This provides several advantages:
+
+- **Fast motion**: IMU responds faster than visual features to rapid rotation
+- **Robustness**: Visual features can fail (e.g., textureless scenes); IMU data is always available
+- **Full 3-DOF estimation**: Visual odometry estimates 2D motion in image plane; IMU adds vertical component
+
+A simple VIO system maintains:
+- **Visual state**: Keyframe poses and map points
+- **IMU state**: Accumulated acceleration and angular velocity
+- **Fusion**: Merge IMU motion estimates between visual updates
+
+---
+
+## 2.5: Autonomous Navigation with Nav2
+
+**Nav2 (Navigation 2)** is the standard ROS 2 navigation stack. It combines perception (costmaps from sensor data), planning (global path planning), and control (local obstacle avoidance) into a complete autonomous navigation system.
+
+### 2.5.1: Nav2 Architecture
+
+Nav2 consists of:
+
+**Costmap Layers:**
+- **Static Layer**: Obstacles from pre-computed maps
+- **Obstacle Layer**: Dynamic obstacles detected by sensors
+- **Inflation Layer**: Expand obstacles by robot radius to prevent collisions
+
+**Planning Algorithms:**
+- **Global Planner**: A* or Theta* to find path from start to goal (coarse plan)
+- **Local Planner**: DWB or MPPI to generate velocity commands (fine control, obstacle avoidance)
+
+**Behavior Tree:**
+- Encodes navigation logic (e.g., "Get close to goal, then rotate to face goal")
+- Recoveries: If stuck, attempt to recover (e.g., spin in place, backup)
+
+### 2.5.2: Costmap Representation and Layers
+
+A **costmap** is a grid where each cell has a cost value: 0 (free), 254 (obstacle), 1-253 (inflated risk).
+
+```python
+import numpy as np
+from nav_msgs.msg import OccupancyGrid
+
+class CostmapLayer:
+    def __init__(self, width, height, resolution):
+        self.width = width
+        self.height = height
+        self.resolution = resolution
+        self.data = np.zeros((height, width), dtype=np.uint8)
+
+    def add_obstacle(self, x, y, radius):
+        """Add circular obstacle at (x, y) with given radius."""
+        cx, cy = int(x / self.resolution), int(y / self.resolution)
+        r = int(radius / self.resolution)
+
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                if dx*dx + dy*dy <= r*r:
+                    nx, ny = cx + dx, cy + dy
+                    if 0 <= nx < self.width and 0 <= ny < self.height:
+                        self.data[ny, nx] = 254
+
+    def inflate(self, inflation_radius):
+        """Inflate obstacles by adding risk cells around them."""
+        from scipy import ndimage
+        inflated = ndimage.maximum_filter(self.data, size=int(2*inflation_radius/self.resolution)+1)
+        self.data = inflated
+```
+
+### 2.5.3: Path Planning Algorithms
+
+**A* Algorithm:**
+
+A* finds the shortest path by exploring nodes with minimum $f = g + h$ cost:
+- $g$: cost from start to current node
+- $h$: heuristic cost estimate from current node to goal (admissible heuristic)
+
+For grid-based planning, the heuristic is Euclidean distance:
+
+$$
+h(x, y) = \sqrt{(x - x_{\text{goal}})^2 + (y - y_{\text{goal}})^2}
+$$
+
+**Theta* Algorithm:**
+
+An improvement over A*: instead of moving only to adjacent grid cells, Theta* allows any-angle paths by checking straight-line visibility. This produces shorter, more natural paths.
+
+### 2.5.4: Local Collision Avoidance
+
+While global planning provides a coarse path, **local planners** execute detailed obstacle avoidance:
+
+**DWB (Dynamic Window Approach):**
+
+Searches through control space (velocities) to find commands that:
+1. Make progress toward the goal
+2. Avoid obstacles
+3. Maintain stability
+
+The search space is discretized:
+
+$$
+\mathbf{v}_{\text{search}} = \{(v_x, \omega_z) : v_x \in [v_x^{\min}, v_x^{\max}], \omega_z \in [\omega_z^{\min}, \omega_z^{\max}]\}
+$$
+
+For each candidate velocity, simulate forward motion and score based on:
+
+$$
+\text{score} = \alpha \cdot \text{path\_cost} + \beta \cdot \text{goal\_cost} + \gamma \cdot \text{obstacle\_cost}
+$$
+
+**MPPI (Model Predictive Path Integral):**
+
+A probabilistic planning approach that:
+1. Samples hundreds of control trajectories
+2. Evaluates each trajectory's cost (obstacle collisions, goal deviation)
+3. Reweights samples by their costs (optimal control)
+4. Outputs the mean of high-probability trajectories
+
+MPPI is more computationally expensive than DWB but handles complex, non-convex obstacle configurations better.
+
+### 2.5.5: Behavior Trees for Navigation
+
+A **behavior tree** encodes navigation logic as a tree where nodes represent actions or decisions:
+
+```xml
+<root main_tree_to_execute="NavTree">
+  <BehaviorTree ID="NavTree">
+    <Sequence name="NavSequence">
+      <InitializeGoal/>
+      <Repeat>
+        <Selector name="Recovery">
+          <Sequence name="NavigateSequence">
+            <ComputePath goal="goal" planner_id="GridPlanner"/>
+            <FollowPath/>
+          </Sequence>
+          <Sequence name="RecoverySequence">
+            <BackUp distance="0.5"/>
+            <Spin angle="1.57"/>
+          </Sequence>
+        </Selector>
+      </Repeat>
+      <OnGoalReached/>
+    </Sequence>
+  </BehaviorTree>
+</root>
+```
+
+This behavior tree:
+1. Initializes the goal
+2. Repeatedly attempts to navigate (compute and follow path)
+3. If navigation fails (obstacles), attempts recovery (backup, spin)
+4. On success, calls goal reached handler
+
+---
+
+## 2.6: Worked Example: Setting Up Gazebo Simulation with a Robot
+
+Let us walk through creating and simulating a simple 2-link robot arm in Gazebo.
+
+**Step 1: Create URDF Description**
+
+Create `robot.urdf`:
+
+```xml
+<?xml version="1.0"?>
+<robot name="simple_arm">
+  <!-- Base link (fixed to ground) -->
+  <link name="base_link">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="0.1 0.1 0.1"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.1 0.1 0.1"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- First link -->
+  <link name="link1">
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder length="0.3" radius="0.05"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.3" radius="0.05"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Joint 1 (revolute, rotation around Z-axis) -->
+  <joint name="joint1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link1"/>
+    <origin xyz="0 0 0.1" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="10" velocity="1.0"/>
+    <dynamics damping="0.1" friction="0.1"/>
+  </joint>
+
+  <!-- Second link -->
+  <link name="link2">
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.005" ixy="0" ixz="0" iyy="0.005" iyz="0" izz="0.005"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <cylinder length="0.3" radius="0.04"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.3" radius="0.04"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Joint 2 (revolute) -->
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin xyz="0 0 0.15" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="10" velocity="1.0"/>
+    <dynamics damping="0.1" friction="0.1"/>
+  </joint>
+
+  <!-- Gazebo plugins for ROS 2 -->
+  <gazebo>
+    <plugin filename="libgazebo_ros_control.so" name="gazebo_ros_control">
+      <robotNamespace>/simple_arm</robotNamespace>
+    </plugin>
+  </gazebo>
+</robot>
+```
+
+**Step 2: Create Gazebo World File**
+
+Create `world.sdf`:
+
+```xml
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="simple_world">
+    <physics name="default_physics" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <gravity>0 0 -9.81</gravity>
+    </physics>
+
+    <light name="sun" type="directional">
+      <direction>0.5 0.5 1</direction>
+      <diffuse>1 1 1 1</diffuse>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="simple_arm">
+      <pose>0 0 0 0 0 0</pose>
+      <link name="base_link">
+        <inertial>
+          <mass value="1.0"/>
+          <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+        <visual name="visual">
+          <geometry>
+            <box size="0.1 0.1 0.1"/>
+          </geometry>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <box size="0.1 0.1 0.1"/>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+  </world>
+</sdf>
+```
+
+**Step 3: Launch Gazebo**
+
+```bash
+gazebo world.sdf
+```
+
+Verify: Gazebo window opens with ground plane. The robot is loaded and subject to gravity.
+
+**Step 4: Verify Sensor Output**
+
+If the robot has camera plugins, check that ROS 2 topics are published:
+
+```bash
+ros2 topic list
+```
+
+You should see `/simple_arm/camera/image_raw` and other sensor topics. Subscribe and verify data:
+
+```bash
+ros2 topic echo /simple_arm/camera/image_raw --max-count=1
+```
+
+**Learning Outcome:** Students understand the workflow: URDF → World file → Gazebo launch → Sensor verification. They recognize that simulation produces real ROS 2 topics, making simulation indistinguishable from hardware to downstream perception nodes.
+
+---
+
+## 2.7: Worked Example: Implementing Visual Odometry
+
+Visual odometry estimates camera pose from feature tracking between consecutive frames. Here is a practical implementation:
+
+```python
+import cv2
+import numpy as np
+from collections import deque
+
+class VisualOdometry:
+    def __init__(self, camera_matrix):
+        self.camera_matrix = camera_matrix
+        self.orb = cv2.ORB_create(nfeatures=500)
+        self.bf_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        self.pose = np.eye(4)  # 4x4 homogeneous transformation
+        self.frame_history = deque(maxlen=2)
+        self.keypoint_history = deque(maxlen=2)
+
+    def track_frame(self, image):
+        """Process a new frame and update pose estimate."""
+        # Detect features
+        keypoints, descriptors = self.orb.detectAndCompute(image, None)
+
+        if len(self.frame_history) > 0:
+            # Match with previous frame
+            prev_descriptors = self.keypoint_history[0][1]
+            matches = self.bf_matcher.match(prev_descriptors, descriptors)
+            matches = sorted(matches, key=lambda x: x.distance)
+
+            if len(matches) > 10:
+                # Extract matched keypoints
+                prev_kp = self.keypoint_history[0][0]
+                kp1 = np.array([prev_kp[m.queryIdx].pt for m in matches])
+                kp2 = np.array([keypoints[m.trainIdx].pt for m in matches])
+
+                # Estimate essential matrix (with outlier rejection)
+                essential_matrix, inlier_mask = cv2.findEssentialMat(
+                    kp1, kp2, self.camera_matrix,
+                    method=cv2.RANSAC, prob=0.999, threshold=1.0
+                )
+
+                if essential_matrix is not None:
+                    # Recover pose from essential matrix
+                    _, R, t, mask = cv2.recoverPose(
+                        essential_matrix, kp1, kp2,
+                        self.camera_matrix, mask=inlier_mask
+                    )
+
+                    # Update pose (accumulate transformation)
+                    T = np.eye(4)
+                    T[:3, :3] = R
+                    T[:3, 3] = t.flatten()
+                    self.pose = self.pose @ T
+
+        self.frame_history.append(image)
+        self.keypoint_history.append((keypoints, descriptors))
+
+        return self.pose.copy()
+
+    def get_pose(self):
+        """Return current pose as 4x4 homogeneous matrix."""
+        return self.pose.copy()
+
+    def get_position(self):
+        """Return current position [x, y, z]."""
+        return self.pose[:3, 3]
+
+    def get_rotation(self):
+        """Return current rotation as 3x3 matrix."""
+        return self.pose[:3, :3]
+```
+
+**Usage in ROS 2:**
+
+```python
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image
+from nav_msgs.msg import Odometry
+from cv_bridge import CvBridge
+import numpy as np
+
+class VisualOdometryNode(Node):
+    def __init__(self):
+        super().__init__('visual_odometry_node')
+
+        # Camera matrix (from calibration)
+        self.camera_matrix = np.array([
+            [615.0, 0, 320],
+            [0, 615.0, 240],
+            [0, 0, 1]
+        ])
+
+        self.vo = VisualOdometry(self.camera_matrix)
+        self.cv_bridge = CvBridge()
+
+        # Subscribers and publishers
+        self.image_sub = self.create_subscription(
+            Image, '/camera/image_raw',
+            self.image_callback, 10)
+        self.odom_pub = self.create_publisher(
+            Odometry, '/vo/odometry', 10)
+
+    def image_callback(self, msg):
+        """Process incoming image and publish odometry."""
+        image = self.cv_bridge.imgmsg_to_cv2(msg, 'mono8')
+        pose = self.vo.track_frame(image)
+
+        # Create odometry message
+        odom_msg = Odometry()
+        odom_msg.header.stamp = msg.header.stamp
+        odom_msg.header.frame_id = 'world'
+        odom_msg.child_frame_id = 'camera'
+
+        # Fill position and orientation
+        odom_msg.pose.pose.position.x = float(pose[0, 3])
+        odom_msg.pose.pose.position.y = float(pose[1, 3])
+        odom_msg.pose.pose.position.z = float(pose[2, 3])
+
+        # Convert rotation to quaternion
+        from tf_transformations import quaternion_from_matrix
+        quat = quaternion_from_matrix(pose)
+        odom_msg.pose.pose.orientation.x = quat[0]
+        odom_msg.pose.pose.orientation.y = quat[1]
+        odom_msg.pose.pose.orientation.z = quat[2]
+        odom_msg.pose.pose.orientation.w = quat[3]
+
+        self.odom_pub.publish(odom_msg)
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = VisualOdometryNode()
+    rclpy.spin(node)
+
+if __name__ == '__main__':
+    main()
+```
+
+**Learning Outcome:** Students understand the complete pipeline: feature detection → matching → essential matrix estimation → pose recovery → ROS 2 integration. They recognize challenges (outlier matching, scale ambiguity) and appreciate why SLAM systems are more robust.
+
+**Important Caveat:** Monocular visual odometry has an inherent scale ambiguity—only the ratio of positions between frames is recoverable, not absolute metric scale. The trajectory magnitude is arbitrary. Depth cameras (RGB-D), stereo configurations, or IMU fusion eliminate this fundamental limitation.
+
+---
+
+## 2.8: Summary and Key Takeaways
+
+**Core Concepts:**
+
+1. **Simulation is essential for robotics development**: Physics simulators like Gazebo enable safe, rapid iteration. GPU-accelerated platforms like Isaac Sim enable massive-scale training through synthetic data generation.
+
+2. **Sensor simulation requires realistic noise models**: Simulators must faithfully reproduce sensor characteristics (noise, quantization, latency) to ensure models trained in simulation transfer to real hardware.
+
+3. **Visual perception is based on geometric principles**: The pinhole camera model, epipolar geometry, and bundle adjustment provide the mathematical foundations. Feature detection and matching enable robust tracking across frames.
+
+4. **SLAM solves the localization-and-mapping problem simultaneously**: Visual SLAM systems track features, maintain a map, and detect loop closures to correct drift. Multi-sensor fusion (visual-inertial odometry) improves robustness.
+
+5. **Nav2 provides a complete navigation stack**: Costmaps represent obstacles, global planners find paths, and local planners execute collision avoidance. Behavior trees encode recovery logic.
+
+6. **Sim-to-real transfer requires careful attention to domain gap**: Domain randomization, system identification, and robust control design help bridge the gap between simulation and real hardware.
+
+7. **Real-time constraints demand efficiency**: Algorithms must run within latency budgets (typically 10-100 ms). GPU acceleration and efficient implementations are essential for deployed systems.
+
+**Common Pitfalls:**
+
+- **Over-trusting simulation**: Physics models are approximations. Always validate on hardware.
+- **Insufficient feature density**: If objects lack distinctive features, visual SLAM fails. Textured environments are essential.
+- **Costmap resolution trade-offs**: Fine resolution (small grid cells) captures detail but costs computation; coarse resolution is fast but loses precision.
+- **Neglecting sensor calibration**: Camera calibration errors propagate through perception pipelines. Invest in accurate calibration.
+
+**Connection to Chapter 3:**
+
+Chapter 3 extends perception to higher-level reasoning: how do robots understand semantic meaning from visual inputs? Chapter 3 covers computer vision (object detection, semantic segmentation) and how large language models can ground reasoning in visual perception, enabling robots to follow natural language commands ("Pick up the red cube") by combining vision and language understanding.
+
+---
+
+## Practice Problems
+
+### Problem 1: Gazebo Physics Simulation
+
+Set up a Gazebo world containing a 1-kg cube on a table. Apply a 10 N horizontal force to the cube for 1 second. Assuming coefficient of friction μ = 0.3 and table dimensions 1m × 1m:
+
+a) Calculate expected acceleration while force is applied.
+b) Calculate expected final velocity after 1 second.
+c) Calculate expected distance traveled before friction brings it to rest.
+d) Simulate in Gazebo and compare with theoretical predictions.
+
+### Problem 2: Visual Odometry Evaluation
+
+Implement visual odometry on a sequence of images from a calibrated camera:
+
+a) Extract ORB features from consecutive frames.
+b) Match features between frames using the provided visual odometry code.
+c) For each frame pair, compute the essential matrix.
+d) Recover pose and accumulate trajectory estimates.
+e) Compare estimated trajectory with ground truth from a motion capture system.
+
+### Problem 3: SLAM Loop Closure
+
+Extend the visual odometry implementation with loop closure detection:
+
+a) Build a database of image descriptors from the entire sequence.
+b) When processing a new frame, query the database for similar descriptors.
+c) If loop closure is detected (high descriptor similarity), compute pose graph constraints.
+d) Optimize the pose graph using g2o or Ceres to distribute accumulated error.
+
+### Problem 4: Nav2 Path Planning
+
+Create a Gazebo world with obstacles. Implement a ROS 2 node that:
+
+a) Creates a costmap from simulated LiDAR data.
+b) Computes a path using A* planning.
+c) Follows the path using the DWB local planner.
+d) Demonstrates recovery behavior when the robot is blocked by an obstacle.
+
+---
+
+## Further Reading & Resources
+
+- **Gazebo Official Documentation**: https://gazebosim.org/docs/
+- **ROS 2 Navigation (Nav2) Documentation**: https://navigation.ros.org/
+- **NVIDIA Isaac Sim**: https://developer.nvidia.com/isaac-sim
+- **ORB-SLAM2 GitHub**: https://github.com/raulmur/ORB_SLAM2
+- **Computer Vision: Algorithms and Applications** by Richard Szeliski (covers camera models, feature detection, SLAM)
+- **Probabilistic Robotics** by Thrun, Burgard, and Fox (comprehensive SLAM theory)
+- **ROS 2 Official Tutorials**: https://docs.ros.org/en/humble/Tutorials.html

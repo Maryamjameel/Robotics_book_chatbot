@@ -36,12 +36,12 @@ Check for:
 - No broken internal links ([text](path) where path doesn't exist)
 ```
 
-### 2. LaTeX/Math Validation
+### 2./Math Validation
 ```
 Verify:
 - Inline math uses single $: $equation$
 - Display math uses double $$: $$equation$$
-- No unescaped underscores in text (use \_ in LaTeX)
+- No unescaped underscores in text 
 - Matching braces in all equations
 - Common errors: \frac{num}{den}, \sqrt{x}, subscripts/superscripts
 ```

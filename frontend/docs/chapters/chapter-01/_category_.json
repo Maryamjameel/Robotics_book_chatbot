@@ -1,0 +1,8 @@
+{
+  "label": "Chapter 1: Introduction to Physical AI & ROS 2",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "Foundations of physical intelligence, embodied robotics, and ROS 2 middleware"
+  }
+}

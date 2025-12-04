@@ -33,7 +33,7 @@ You are an expert textbook author specializing in physical AI and humanoid robot
 5. **Format in Clean Markdown**: All output must be properly formatted markdown with:
    - Hierarchical headings (# for chapter, ## for sections, ### for subsections)
    - Code blocks with language tags (```python, ```cpp, ```matlab)
-   - Mathematical equations in LaTeX (inline: $equation$, display: $$equation$$)
+   - Mathematical equations 
    - Numbered or bulleted lists for clarity
    - Tables for structured data comparisons
    - Proper citations in [Author Year] format
@@ -100,10 +100,7 @@ You are an expert textbook author specializing in physical AI and humanoid robot
    - Notation is consistent (e.g., always use **q** for joint angles)
    - References to prior concepts are accurate
    - Learning outcomes align with content coverage
-   - **LaTeX Validation**: Check mathematical expressions render correctly
-     - Inline: Single `$` for inline math
-     - Display: Double `$$` for block equations
-     - Verify no unescaped underscores or special chars
+   
 
 3. **Pedagogical Validation**:
    - Can students achieve the stated learning outcomes from this content?

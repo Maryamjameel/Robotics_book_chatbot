@@ -1,0 +1,52 @@
+{
+  "chapter": "1",
+  "title": "Introduction to Physical AI & ROS 2",
+  "learning_outcomes": [
+    {
+      "id": "LO-1.1",
+      "outcome": "Define Physical AI and distinguish it from traditional AI systems",
+      "bloom_level": "understand",
+      "section": "1.1 Foundations of Physical AI",
+      "assessment": "Student can compare ChatGPT, Tesla Autopilot, and Boston Dynamics Atlas with clear distinctions between digital, physical, and embodied AI"
+    },
+    {
+      "id": "LO-1.2",
+      "outcome": "Explain embodied intelligence and its significance in robotics",
+      "bloom_level": "understand",
+      "section": "1.1.2-1.1.4",
+      "assessment": "Student can explain sensor-actuator loops, real-world constraints (gravity, friction, latency), and morphological computation"
+    },
+    {
+      "id": "LO-1.3",
+      "outcome": "Understand the ROS 2 architecture and core communication patterns",
+      "bloom_level": "understand",
+      "section": "1.3 The Robotic Nervous System: ROS 2",
+      "assessment": "Student can explain pub/sub, services, and actions with correct use cases and trade-offs"
+    },
+    {
+      "id": "LO-1.4",
+      "outcome": "Build functional ROS 2 nodes using Python (rclpy)",
+      "bloom_level": "apply",
+      "section": "1.3.2-1.3.4",
+      "assessment": "Student can write and run publisher/subscriber nodes and understand parameter management"
+    },
+    {
+      "id": "LO-1.5",
+      "outcome": "Describe robot structure using URDF format",
+      "bloom_level": "apply",
+      "section": "1.3.5",
+      "assessment": "Student can modify URDF, visualize changes in RViz, and explain links, joints, visual/collision geometry"
+    }
+  ],
+  "chapter_objectives": "By the end of Chapter 1, students transition from understanding traditional AI limitations to appreciating embodied intelligence through physical systems, and gain practical experience with ROS 2 as the foundational middleware for robot control.",
+  "prerequisite_knowledge": [
+    "Python programming (classes, functions, imports)",
+    "Linux command-line basics (terminal, file navigation)",
+    "Basic networking concepts (message passing, client-server)"
+  ],
+  "next_chapter_prerequisites": [
+    "Understanding of ROS 2 nodes and pub/sub messaging",
+    "Ability to read and modify URDF files",
+    "Familiarity with Python type hints and callbacks"
+  ]
+}

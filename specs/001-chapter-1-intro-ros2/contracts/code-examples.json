@@ -1,0 +1,95 @@
+{
+  "chapter": "1",
+  "title": "Code Examples for Chapter 1",
+  "code_examples": [
+    {
+      "id": "CE-1.1",
+      "title": "Simple ROS 2 Publisher Node",
+      "language": "python",
+      "section": "1.3.2 Nodes, Topics, and the Pub/Sub Pattern",
+      "purpose": "Demonstrate how to create a ROS 2 publisher node that broadcasts sensor data messages",
+      "environment": "ROS 2 Humble, Python 3.10+, rclpy",
+      "expected_behavior": "Node publishes String messages to a topic at 1 Hz (every 1 second)",
+      "validation": {
+        "syntax": "Valid Python 3.10+ syntax with type hints",
+        "api_compliance": "Must use rclpy.node.Node and rclpy.publisher.Publisher from ROS 2 Humble",
+        "error_handling": "Must handle node shutdown gracefully",
+        "documentation": "Must include docstring and inline comments explaining key concepts"
+      },
+      "expected_output": "Messages like 'Publishing: Hello World 1' printed to console, verifiable with 'ros2 topic echo' command"
+    },
+    {
+      "id": "CE-1.2",
+      "title": "Simple ROS 2 Subscriber Node",
+      "language": "python",
+      "section": "1.3.2 Nodes, Topics, and the Pub/Sub Pattern",
+      "purpose": "Demonstrate how to create a ROS 2 subscriber node that receives and processes messages",
+      "environment": "ROS 2 Humble, Python 3.10+, rclpy",
+      "expected_behavior": "Node subscribes to topic and logs received messages to console",
+      "validation": {
+        "syntax": "Valid Python 3.10+ syntax with type hints",
+        "api_compliance": "Must use rclpy.node.Node and rclpy.subscription.Subscription from ROS 2 Humble",
+        "callback": "Must implement callback function for message reception",
+        "documentation": "Must include docstring and comments explaining subscription and callback patterns"
+      },
+      "expected_output": "Messages received from publisher printed to console (e.g., 'Received: Hello World 1')"
+    },
+    {
+      "id": "CE-1.3",
+      "title": "ROS 2 Launch File with Multiple Nodes",
+      "language": "yaml",
+      "section": "1.3.4 Building ROS 2 Packages with Python",
+      "purpose": "Demonstrate how to orchestrate publisher and subscriber nodes in a single launch file",
+      "environment": "ROS 2 Humble launch system",
+      "expected_behavior": "Launching this file starts both publisher and subscriber nodes with proper parameter passing",
+      "validation": {
+        "syntax": "Valid YAML syntax, compliant with ROS 2 launch format",
+        "node_configuration": "Both nodes specified with correct package and executable names",
+        "parameter_passing": "At least one parameter (e.g., topic_name, publish_frequency) configurable via launch file",
+        "documentation": "Comments explaining launch structure and node relationships"
+      },
+      "expected_output": "Both nodes running concurrently; subscriber receives messages from publisher via ROS 2 topic"
+    },
+    {
+      "id": "CE-1.4",
+      "title": "2-Link Robotic Arm URDF Example",
+      "language": "xml",
+      "section": "1.3.5 URDF: Robot Structure Description",
+      "purpose": "Complete worked example of robot structure description in URDF format",
+      "environment": "URDF 1.0 format, compatible with ROS 2 RViz visualization",
+      "expected_behavior": "URDF loads without errors in RViz, renders 2-link arm with joints that can be manipulated",
+      "validation": {
+        "xml_schema": "Valid XML with proper URDF element structure",
+        "links": "Two links defined with visual and collision geometry (e.g., cylinders or boxes)",
+        "joints": "Two revolute joints with realistic limits (e.g., ±90 degrees)",
+        "coordinate_frames": "Proper origin definitions for each link and joint",
+        "documentation": "Comments explaining each major element: links, joints, origin, inertia (if included)"
+      },
+      "expected_output": "RViz successfully loads URDF and displays 2-link arm; joints have motion limits enforced"
+    },
+    {
+      "id": "CE-1.5",
+      "title": "URDF Launch File for RViz Visualization",
+      "language": "yaml",
+      "section": "1.3.5 URDF: Robot Structure Description",
+      "purpose": "Demonstrate how to launch URDF visualization in RViz with proper coordinate frames",
+      "environment": "ROS 2 Humble, RViz visualization tool",
+      "expected_behavior": "Launch file loads URDF and starts RViz with robot model visible",
+      "validation": {
+        "syntax": "Valid ROS 2 launch file YAML",
+        "components": "Loads URDF parameter, starts robot_state_publisher and RViz nodes",
+        "parameters": "URDF file path correctly specified, RViz config included",
+        "documentation": "Comments explaining each component and their roles"
+      },
+      "expected_output": "RViz opens with 2-link arm visible; joint markers can be manipulated to change arm pose"
+    }
+  ],
+  "code_validation_strategy": {
+    "syntax_check": "All code must be valid syntax for stated language/version",
+    "api_check": "Python examples must use rclpy APIs from ROS 2 Humble; URDF must validate against ROS URDF schema",
+    "execution_check": "Code must run on ROS 2 Humble without runtime errors (documented expected environment)",
+    "documentation_check": "Each example must include docstrings and inline comments explaining key concepts",
+    "learning_alignment": "Each example must reinforce specific learning outcome from learning-outcomes.json"
+  },
+  "note": "Code examples are designed to be copy-paste ready for students, with enough detail for learning but simplified to avoid overwhelming complexity. Advanced error handling is mentioned but not implemented in these basic examples."
+}

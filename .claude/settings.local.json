@@ -1,9 +1,22 @@
 {
   "permissions": {
     "allow": [
+      "Bash(powershell.exe -File .specify/scripts/powershell/check-prerequisites.ps1 -Json)",
+      "Bash(powershell.exe -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks)",
+      "Bash(git rev-parse:*)",
+      "Bash(npm run build)",
+      "Bash(npm install)",
+      "Bash(npm run start)",
+      "Bash(bash .specify/scripts/bash/create-phr.sh:*)",
       "Bash(dir:*)",
-      "Bash(dir .specifyscriptspowershell)"
-    ]
+      "Bash(cd:*)",
+      "Bash(npm run build:*)",
+      "Bash(1)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [

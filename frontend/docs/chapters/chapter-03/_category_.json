@@ -1,0 +1,8 @@
+{
+  "label": "Chapter 3: Vision-Language-Action for Robotics",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Humanoid kinematics, locomotion, LLMs, vision-language integration, and embodied AI"
+  }
+}
