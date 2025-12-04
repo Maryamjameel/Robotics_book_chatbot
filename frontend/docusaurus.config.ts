@@ -1,12 +1,12 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
-
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 const config: Config = {
-  title: 'Physical AI & Humanoid Robotics Textbook',
-  tagline: 'Comprehensive robotics education for Panaversity students',
+  title: 'My Site',
+  tagline: 'Dinosaurs are cool',
   favicon: 'img/favicon.ico',
 
   url: 'https://MaryamJami1.github.io',
@@ -19,6 +19,7 @@ const config: Config = {
   onBrokenLinks: 'throw',
 
   markdown: {
+    mermaid: true,
     hooks: {
       onBrokenMarkdownLinks: 'warn',
     },
@@ -27,7 +28,6 @@ const config: Config = {
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
-    // Future: Add 'ur' for Urdu support
   },
 
   presets: [
@@ -36,9 +36,12 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/MaryamJami1/Robotics_book_chatbot/tree/main/frontend/',
+          remarkPlugins: [remarkMath],
+          rehypePlugins: [[rehypeKatex, {output: 'mathml'}]],
         },
-        blog: false, // Disable blog feature for textbook
+        blog: {
+          showReadingTime: true,
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -47,27 +50,22 @@ const config: Config = {
   ],
 
   themeConfig: {
+    image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'Robotics Textbook',
+      title: 'My Site',
       logo: {
-        alt: 'Panaversity Logo',
+        alt: 'My Site Logo',
         src: 'img/logo.svg',
       },
       items: [
         {
           type: 'docSidebar',
-          sidebarId: 'chapters',
+          sidebarId: 'tutorialSidebar',
           position: 'left',
-          label: 'Chapters',
+          label: 'Documentation',
         },
         {
-          type: 'docSidebar',
-          sidebarId: 'glossary',
-          position: 'left',
-          label: 'Glossary',
-        },
-        {
-          href: 'https://github.com//Robotics_book_chatbot',
+          href: 'https://github.com/',
           label: 'GitHub',
           position: 'right',
         },
@@ -75,8 +73,40 @@ const config: Config = {
     },
     footer: {
       style: 'dark',
-      links: [],
-      copyright: `Copyright © ${new Date().getFullYear()} Panaversity. Built with Docusaurus.`,
+      links: [
+        {
+          title: 'Resources',
+          items: [
+            {
+              label: 'ROS 2 Documentation',
+              href: 'https://docs.ros.org/en/humble/',
+            },
+            {
+              label: 'Docusaurus',
+              href: 'https://docusaurus.io',
+            },
+          ],
+        },
+        {
+          title: 'Community',
+          items: [
+            {
+              label: 'ROS 2 Community',
+              href: 'https://discourse.ros.org',
+            },
+          ],
+        },
+        {
+          title: 'More',
+          items: [
+            {
+              label: 'GitHub',
+              href: 'https://github.com/',
+            },
+          ],
+        },
+      ],
+      copyright: `Copyright © ${new Date().getFullYear()} Physical AI & Humanoid Robotics. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

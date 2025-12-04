@@ -176,6 +176,115 @@ After writing, use qa-validation-reviewer agent to check:
 - LaTeX syntax valid
 ```
 
+
+**Phase 2 - Prompt 1b: Write Chapter 2**
+
+  Write complete Chapter 2: Robot Simulation & AI Perception
+
+  Requirements:
+  - Follow outline from chapter-02-outline.md and Project_flow/Minimal_Chapter_Structure.md
+  - 3000 words
+  - Academic tone, clear explanations
+  - Include Python/ROS 2 code examples
+  - 2-3 worked examples
+  - Summary and key takeaways
+
+  Sections:
+  - Introduction (motivate simulation in robotics development)
+  - 2.1 Physics Simulation Foundations: Gazebo
+    - Gazebo architecture and physics engines
+    - SDF (Simulation Description Format)
+    - Sensor simulation with realistic noise
+    - Integration with ROS 2
+  - 2.2 Advanced Simulation: NVIDIA Isaac Sim
+    - Isaac Sim ecosystem and capabilities
+    - Creating synthetic data for AI training
+    - ROS 2 integration with Isaac
+  - 2.3 Visual Perception Foundations
+    - Camera models and projections
+    - Point clouds (RGB-D, LiDAR)
+    - Feature detection algorithms
+  - 2.4 SLAM (Simultaneous Localization and Mapping)
+    - Visual SLAM fundamentals
+    - VSLAM algorithms and implementations
+    - Loop closure detection
+  - 2.5 Autonomous Navigation with Nav2
+    - Nav2 architecture (global planner, local planner)
+    - Costmaps and inflation layers
+    - Behavior trees for navigation
+  - 2.6 Summary & Key Takeaways
+
+  Use textbook-author agent to generate content.
+
+  After writing, use qa-validation-reviewer agent to check:
+  - Technical correctness
+  - Gazebo and Isaac Sim code examples are valid
+  - SLAM algorithm descriptions are accurate
+  - Markdown formatting
+  - Learning outcomes met
+
+
+  ---
+
+
+**Phase 2 - Prompt 1c: Write Chapter 3**
+
+  Write complete Chapter 3: Vision-Language-Action for Robotics
+
+  Requirements:
+  - Follow outline from chapter-03-vision-language-action.md and Project_flow/Minimal_Chapter_Structure.md
+  - 3000 words
+  - Academic tone, clear explanations
+  - Include Python/ROS 2 code examples
+  - 2-3 worked examples
+  - Summary and key takeaways
+
+  Sections:
+  - Introduction (motivate humanoid robots with VLA capabilities)
+  - 3.1 Humanoid Arm Kinematics
+    - Denavit-Hartenberg parameters
+    - Forward kinematics derivation
+    - Jacobian and workspace analysis
+    - Inverse kinematics methods
+  - 3.2 Bipedal Locomotion
+    - Zero Moment Point (ZMP) theory
+    - Inverted pendulum model
+    - Gait patterns (walking, running)
+    - Balance recovery strategies
+  - 3.3 LLMs and Whisper for Robotics
+    - Transformer architecture basics
+    - OpenAI Whisper for speech recognition
+    - LLM prompt engineering for robotics
+    - Integrating with robot tasks
+  - 3.4 Vision-Language-Action Integration
+    - Vision-language models (CLIP, BLIP)
+    - Grounding language to actions
+    - Multi-modal learning for robotics
+    - Task decomposition from natural language
+  - 3.5 Cognitive Planning and Execution
+    - Classical vs learning-based planning
+    - Hierarchical task decomposition
+    - Real-time constraint handling
+    - Feedback and error recovery
+  - 3.6 End-to-End VLA Pipelines
+    - System architecture design
+    - Latency budgets and optimization
+    - Sim-to-real transfer
+  - 3.7 Summary & Key Takeaways
+
+  Use textbook-author agent to generate content.
+
+  After writing, use qa-validation-reviewer agent to check:
+  - Technical correctness of kinematics/dynamics
+  - LLM and vision-language model descriptions accurate
+  - Code examples for bipedal control are valid
+  - Markdown formatting
+  - Learning outcomes met
+
+  ---
+
+
+
 **Prompt 2: Create Glossary**
 ```
 Create comprehensive glossary for Physical AI & Humanoid Robotics textbook:
