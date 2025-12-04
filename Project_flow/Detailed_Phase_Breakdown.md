@@ -45,11 +45,19 @@ Use Environment_Configuration_Skill.
 
 **Prompt 2: Create Chapter Outlines**
 ```
-Create outlines for 3 robotics chapters:
+Create outlines for 3 robotics chapters based on the Physical AI & Humanoid Robotics course:
 
-Chapter 1: Introduction to Physical AI
-Chapter 2: Robot Kinematics Fundamentals
-Chapter 3: Sensor Integration and Perception
+Chapter 1: Introduction to Physical AI & ROS 2
+  - Covers: Foundations of Physical AI (Weeks 1-2) + ROS 2 Fundamentals (Weeks 3-5)
+  - Topics: Embodied intelligence, ROS 2 architecture, nodes/topics/services, URDF
+
+Chapter 2: Robot Simulation & AI Perception
+  - Covers: Gazebo & Unity (Weeks 6-7) + NVIDIA Isaac Platform (Weeks 8-10)
+  - Topics: Physics simulation, sensor simulation, Isaac Sim, VSLAM, Nav2
+
+Chapter 3: Vision-Language-Action for Robotics
+  - Covers: Humanoid Development (Weeks 11-12) + VLA (Week 13)
+  - Topics: Kinematics, bipedal locomotion, Whisper, LLMs, cognitive planning
 
 For each chapter:
 - 3-5 measurable learning outcomes
@@ -57,6 +65,9 @@ For each chapter:
 - Key concepts and terminology
 - 2-3 worked examples planned
 - Equations and algorithms to cover
+- Code examples (Python/ROS 2)
+
+Reference: Project_flow/Minimal_Chapter_Structure.md for detailed structure
 
 Use Chapter_Outline_Skill to generate detailed outlines.
 Save to: frontend/docs/chapters/chapter-0X-outline.md
@@ -126,29 +137,40 @@ Write complete, academically rigorous chapters (2500-3000 words each) with code 
 
 **Prompt 1: Write Chapter (repeat for each chapter)**
 ```
-Write complete Chapter 1: Introduction to Physical AI
+Write complete Chapter 1: Introduction to Physical AI & ROS 2
 
 Requirements:
-- Follow outline from chapter-01-outline.md
-- 2500-3000 words
+- Follow outline from chapter-01-outline.md and Project_flow/Minimal_Chapter_Structure.md
+- 3000 words
 - Academic tone, clear explanations
-- Include Python code examples
+- Include Python/ROS 2 code examples
 - Use LaTeX for equations
 - 2-3 worked examples
 - Summary and key takeaways
 
 Sections:
-- Introduction (motivate the topic)
-- 1.1 What is Physical AI?
-- 1.2 Embodied Intelligence vs Traditional AI
-- 1.3 Real-World Applications
-- 1.4 Current Challenges and Future Directions
-- Summary
+- Introduction (motivate Physical AI and embodied intelligence)
+- 1.1 Foundations of Physical AI
+  - Definition and principles
+  - Digital AI vs Physical AI vs Embodied Intelligence
+  - Why humanoids excel in human environments
+- 1.2 The Humanoid Robotics Landscape
+  - Current state (Unitree, Tesla, Boston Dynamics)
+  - Sensor systems (LIDAR, cameras, IMUs)
+  - Degrees of freedom and applications
+- 1.3 The Robotic Nervous System: ROS 2
+  - ROS 2 architecture (nodes, topics, services, actions)
+  - Building ROS 2 packages with Python (rclpy)
+  - Publisher/Subscriber example code
+  - URDF (robot structure definition)
+  - Simple 2-link arm URDF example
+- 1.4 Summary & Key Takeaways
 
 Use textbook-author agent to generate content.
 
 After writing, use qa-validation-reviewer agent to check:
 - Technical correctness
+- ROS 2 code examples are valid
 - Markdown formatting
 - Learning outcomes met
 - LaTeX syntax valid
@@ -156,25 +178,40 @@ After writing, use qa-validation-reviewer agent to check:
 
 **Prompt 2: Create Glossary**
 ```
-Create comprehensive glossary for robotics textbook:
+Create comprehensive glossary for Physical AI & Humanoid Robotics textbook:
 
 1. Extract technical terms from all 3 chapters
-2. Identify 30-40 terms needing definitions:
-   - Physical AI, embodied intelligence
-   - Forward/inverse kinematics, DH parameters, Jacobian
-   - IMU, LIDAR, sensor fusion, Kalman filter
-   - Degrees of freedom, end-effector, workspace, singularity
+
+2. Identify 60-80 terms needing definitions:
+
+   Chapter 1 terms (~20-25):
+   - Physical AI, embodied intelligence, ROS 2, node, topic, publisher/subscriber
+   - Service, action, URDF, link, joint, DOF, end-effector
+   - LIDAR, IMU, sensor fusion, rclpy, colcon, launch file
+
+   Chapter 2 terms (~20-25):
+   - Gazebo, SDF, physics engine, point cloud, RGB-D camera
+   - SLAM, VSLAM, NVIDIA Isaac Sim, Omniverse USD, synthetic data
+   - Sim-to-real, Nav2, costmap, path planning, A*, behavior tree
+
+   Chapter 3 terms (~20-25):
+   - Forward kinematics, inverse kinematics, Jacobian, ZMP
+   - Bipedal locomotion, gait, grasp planning, HRI
+   - OpenAI Whisper, LLM, cognitive planning, action primitive
+   - VLA (Vision-Language-Action), YOLO, object detection, semantic segmentation
 
 3. For each term create entry:
    - Term name (bold)
    - Concise definition (50-150 words)
-   - Category/domain
+   - Category/domain (e.g., ROS 2, Simulation, Perception, Control)
    - Cross-references to related terms
    - Link to chapter where introduced
 
 4. Organize alphabetically with category tags
 
-5. Link terms in chapters to glossary
+5. Link terms in chapters to glossary using markdown links
+
+Reference: Project_flow/Minimal_Chapter_Structure.md for complete term list
 
 Use glossary-manager agent to:
 - Detect all technical terms
@@ -186,9 +223,9 @@ Use Glossary_Expansion_Skill for definitions.
 ```
 
 #### **📦 Deliverables**
-- ✅ Chapter 1: Introduction to Physical AI (2500+ words)
-- ✅ Chapter 2: Robot Kinematics (2500+ words)
-- ✅ Chapter 3: Sensor Perception (2500+ words)
+- ✅ Chapter 1: Introduction to Physical AI & ROS 2 (3000+ words)
+- ✅ Chapter 2: Robot Simulation & AI Perception (3000+ words)
+- ✅ Chapter 3: Vision-Language-Action for Robotics (3000+ words)
 - ✅ All chapters include:
   - Learning outcomes
   - Code examples (tested)
@@ -196,10 +233,10 @@ Use Glossary_Expansion_Skill for definitions.
   - Worked examples
   - Summary sections
 - ✅ QA review completed for each
-- ✅ `glossary.md` with 30-40 term definitions
+- ✅ `glossary.md` with 60-80 term definitions
 - ✅ Alphabetically organized entries
 - ✅ Cross-references between related terms
-- ✅ Category tags
+- ✅ Category tags (ROS 2, Simulation, Perception, Control, etc.)
 - ✅ Inline links from chapters to glossary
 - ✅ Glossary added to sidebar
 
@@ -207,10 +244,10 @@ Use Glossary_Expansion_Skill for definitions.
 ```
 frontend/docs/
 ├── chapters/
-│   ├── chapter-01-intro-physical-ai.md      (with glossary links)
-│   ├── chapter-02-robot-kinematics.md       (with glossary links)
-│   └── chapter-03-sensor-perception.md      (with glossary links)
-└── glossary.md              # Main glossary
+│   ├── chapter-01-intro-physical-ai-ros2.md      (3000 words, ROS 2 code)
+│   ├── chapter-02-simulation-ai-perception.md    (3000 words, Gazebo/Isaac)
+│   └── chapter-03-vision-language-action.md      (3000 words, VLA pipeline)
+└── glossary.md              # 60-80 terms with cross-references
 ```
 
 ---

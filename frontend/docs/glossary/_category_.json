@@ -1,0 +1,8 @@
+{
+  "label": "Glossary",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Definitions of key terms in robotics."
+  }
+}
