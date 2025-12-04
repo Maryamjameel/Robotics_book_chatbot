@@ -6,6 +6,8 @@
   "author": "Panaversity",
   "scripts": {
     "docusaurus": "docusaurus",
+    "prebuild": "npm run glossary:generate",
+    "prestart": "npm run glossary:generate",
     "start": "docusaurus start",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
@@ -14,24 +16,32 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "glossary:generate": "node scripts/generate-glossary-index.js",
+    "glossary:validate-links": "node scripts/link-integrity-validator.js",
+    "glossary:validate-terms": "node scripts/term-count-validator.js",
+    "glossary:validate-categories": "node scripts/category-consistency-validator.js",
+    "glossary:validate-all": "npm run glossary:validate-links && npm run glossary:validate-terms && npm run glossary:validate-categories"
   },
   "dependencies": {
     "@docusaurus/core": "3.9.2",
     "@docusaurus/preset-classic": "3.9.2",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
+    "framer-motion": "^12.23.25",
     "katex": "^0.16.25",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "rehype-katex": "^7.0.1",
-    "remark-math": "^6.0.0"
+    "remark-math": "^6.0.0",
+    "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.9.2",
     "@docusaurus/tsconfig": "3.9.2",
     "@docusaurus/types": "3.9.2",
+    "glob": "^10.0.0",
     "typescript": "~5.6.2"
   },
   "browserslist": {

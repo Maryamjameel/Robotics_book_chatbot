@@ -1,0 +1,146 @@
+[
+  {
+    "id": "T089",
+    "term": "API",
+    "acronym": "Application Programming Interface",
+    "definition": "An Application Programming Interface (API) is a set of defined rules, routines, and protocols for building software applications. In robotics, APIs allow different software components or external applications to interact with a robot's functionalities in a standardized way. For example, a robot's co",
+    "categories": [
+      "Software Concepts",
+      "Software Tools"
+    ],
+    "relatedTerms": [
+      "Middleware",
+      "Library",
+      "Software Development Kit",
+      "ROS 2"
+    ],
+    "docPath": "/docs/glossary/terms/T089-api"
+  },
+  {
+    "id": "T087",
+    "term": "Controller (Software)",
+    "definition": "In robotics, a software controller is a program or algorithm that processes sensor feedback and generates commands for the robot's actuators to achieve a desired behavior or trajectory. It is the \"brain\" of the control system, implementing control laws (e.g., PID, fuzzy logic, model predictive contr",
+    "categories": [
+      "Control & Learning",
+      "Software Concepts"
+    ],
+    "relatedTerms": [
+      "Feedback Control",
+      "PID Controller",
+      "Control Loop",
+      "State Estimation"
+    ],
+    "docPath": "/docs/glossary/terms/T087-controller-software"
+  },
+  {
+    "id": "T086",
+    "term": "Encoder",
+    "definition": "An encoder is a sensor used in robotics to provide feedback on the position, velocity, or rotational speed of a motor shaft or a joint. Most commonly, they are rotary encoders that convert angular position into an electrical signal, either digital or analog. This feedback is crucial for closed-loop ",
+    "categories": [
+      "Hardware Components",
+      "Perception & Sensing"
+    ],
+    "relatedTerms": [
+      "Motor/Actuator",
+      "Feedback Control",
+      "Sensor",
+      "Position Sensor"
+    ],
+    "docPath": "/docs/glossary/terms/T086-encoder"
+  },
+  {
+    "id": "T088",
+    "term": "Middleware",
+    "definition": "Middleware in robotics refers to software that bridges the gap between a robot's operating system or hardware and its application software. It provides a common set of services and abstractions that simplify the development of complex robotic systems, especially those with distributed components. Mi",
+    "categories": [
+      "Software Concepts",
+      "ROS 2 Architecture"
+    ],
+    "relatedTerms": [
+      "ROS 2",
+      "API",
+      "Distributed System",
+      "Communication Protocol"
+    ],
+    "docPath": "/docs/glossary/terms/T088-middleware"
+  },
+  {
+    "id": "T085",
+    "term": "Motor/Actuator",
+    "definition": "An actuator is a component of a machine that is responsible for moving and controlling a mechanism or system. In robotics, motors are the most common type of actuators, converting electrical energy into mechanical motion (typically rotation or linear displacement) to drive the robot's joints. They a",
+    "categories": [
+      "Hardware Components",
+      "Control & Learning"
+    ],
+    "relatedTerms": [
+      "Joint",
+      "Controller (Hardware)",
+      "Servo Motor",
+      "DC Motor"
+    ],
+    "docPath": "/docs/glossary/terms/T085-motor-actuator"
+  },
+  {
+    "id": "T084",
+    "term": "Redundancy",
+    "definition": "In robotics, redundancy occurs when a manipulator has more degrees of freedom (DOF) than strictly necessary to achieve a desired task. For instance, reaching a point in 3D space requires a minimum of 3 DOFs for position, and 3 more for orientation, totaling 6. A robot with 7 or more DOFs is consider",
+    "categories": [
+      "Kinematics & Dynamics",
+      "Control & Learning"
+    ],
+    "relatedTerms": [
+      "Degrees of Freedom",
+      "Kinematics",
+      "Inverse Kinematics",
+      "Null Space"
+    ],
+    "docPath": "/docs/glossary/terms/T084-redundancy"
+  },
+  {
+    "id": "T081",
+    "term": "Robot Configuration",
+    "definition": "A robot's configuration refers to the complete specification of all its joint variables (e.g., angles for revolute joints, displacements for prismatic joints) at a given instant. This set of values uniquely defines the robot's posture and the spatial position and orientation of all its links and end",
+    "categories": [
+      "Kinematics & Dynamics",
+      "Software Concepts"
+    ],
+    "relatedTerms": [
+      "Joint Space",
+      "Task Space",
+      "Degrees of Freedom",
+      "Kinematics"
+    ],
+    "docPath": "/docs/glossary/terms/T081-robot-configuration"
+  },
+  {
+    "id": "T082",
+    "term": "Singularity",
+    "definition": "In robotics, a singularity is a configuration where the robot's end-effector loses one or more degrees of freedom of motion, often occurring at the boundaries or specific internal points of its workspace. Mathematically, singularities are identified by the rank deficiency of the robot's Jacobian mat",
+    "categories": [
+      "Kinematics & Dynamics",
+      "Control & Learning"
+    ],
+    "relatedTerms": [
+      "Jacobian Matrix",
+      "Degrees of Freedom",
+      "Workspace",
+      "Inverse Kinematics"
+    ],
+    "docPath": "/docs/glossary/terms/T082-singularity"
+  },
+  {
+    "id": "T083",
+    "term": "Workspace",
+    "definition": "The workspace of a robot refers to the total volume of space that its end-effector can reach. It is a critical characteristic in robot design and task planning. The workspace is typically defined by the robot's kinematics, including its link lengths, joint limits, and degrees of freedom. There are t",
+    "categories": [
+      "Kinematics & Dynamics"
+    ],
+    "relatedTerms": [
+      "Joint Space",
+      "Task Space",
+      "Degrees of Freedom",
+      "Robot Configuration"
+    ],
+    "docPath": "/docs/glossary/terms/T083-workspace"
+  }
+]
