@@ -397,17 +397,7 @@ Deploy Docusaurus book to GitHub Pages:
 
 4. Test build: npm run serve
 
-5. Push to GitHub
 
-6. Enable GitHub Pages in repository settings:
-   - Source: Deploy from branch
-   - Branch: gh-pages
-
-7. Test live site:
-   - Verify all navigation
-   - Check glossary links
-   - Test mobile responsiveness
-   - Verify code blocks and LaTeX render
 ```
 
 #### **📦 Deliverables**
