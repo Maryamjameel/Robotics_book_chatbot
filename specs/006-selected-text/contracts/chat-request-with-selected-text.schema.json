@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RAG Chat Request with Selected Text",
+  "description": "Extended request payload for RAG backend endpoint with optional selected_text parameter for search boosting",
+  "type": "object",
+  "required": ["question"],
+  "properties": {
+    "question": {
+      "type": "string",
+      "description": "User question (1-2000 characters)",
+      "minLength": 1,
+      "maxLength": 2000,
+      "examples": ["What is forward kinematics?", "Explain inverse kinematics step by step"]
+    },
+    "selected_text": {
+      "type": "string",
+      "description": "Optional highlighted text from documentation page (used for search result boosting)",
+      "minLength": 0,
+      "maxLength": 500,
+      "examples": ["forward kinematics", "Denavit-Hartenberg convention"]
+    },
+    "pageContext": {
+      "type": "object",
+      "description": "Optional page metadata where question was asked",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full page URL including protocol",
+          "examples": ["http://localhost:3000/docs/chapter-3#forward-kinematics"]
+        },
+        "pathname": {
+          "type": "string",
+          "description": "URL pathname without domain",
+          "examples": ["/docs/chapter-3", "/docs/chapter-2/section-2"]
+        },
+        "chapter": {
+          "type": "string",
+          "description": "Chapter title if extracted from breadcrumb",
+          "examples": ["Chapter 3: Kinematics", "Chapter 5"]
+        },
+        "section": {
+          "type": "string",
+          "description": "Section title if extracted from breadcrumb",
+          "examples": ["Forward Kinematics", "Mathematical Foundations"]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "Confidence in page context extraction: 'high' if from breadcrumb, 'medium' if from URL, 'low' if guessed"
+        }
+      }
+    },
+    "sessionId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Optional session identifier for tracking conversation",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "question": "What is forward kinematics?",
+      "selected_text": "forward kinematics",
+      "pageContext": {
+        "url": "http://localhost:3000/docs/chapter-3#forward-kinematics",
+        "pathname": "/docs/chapter-3",
+        "chapter": "Chapter 3",
+        "section": "Forward Kinematics",
+        "confidence": "high"
+      },
+      "sessionId": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    {
+      "question": "Explain inverse kinematics",
+      "selected_text": "inverse kinematics",
+      "pageContext": null,
+      "sessionId": null
+    },
+    {
+      "question": "What is the Denavit-Hartenberg convention?",
+      "selected_text": null,
+      "pageContext": null,
+      "sessionId": null
+    }
+  ]
+}
