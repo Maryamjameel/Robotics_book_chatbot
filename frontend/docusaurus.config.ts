@@ -10,7 +10,7 @@ const config: Config = {
   favicon: 'img/favicon.ico',
 
   url: 'https://MaryamJami1.github.io',
-  baseUrl: '/Robotics_book_chatbot/',
+  baseUrl: '/',
   organizationName: 'MaryamJami1',
   projectName: 'Robotics_book_chatbot',
   deploymentBranch: 'gh-pages',
