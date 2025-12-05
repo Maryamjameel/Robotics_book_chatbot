@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RAG Chat Request",
+  "description": "Request payload sent from ChatKit widget to RAG backend endpoint",
+  "type": "object",
+  "required": ["question"],
+  "properties": {
+    "question": {
+      "type": "string",
+      "description": "User's question about the textbook content",
+      "minLength": 1,
+      "maxLength": 2000,
+      "examples": ["What is forward kinematics?", "How do I implement inverse kinematics?"]
+    },
+    "selectedText": {
+      "type": "string",
+      "description": "Text selected by user from documentation (optional, for P3 feature)",
+      "minLength": 1,
+      "maxLength": 5000,
+      "examples": ["The forward kinematics problem is to determine..."]
+    },
+    "pageContext": {
+      "type": "object",
+      "description": "Metadata about the page where question was asked (optional, for P2 feature)",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Full URL of the documentation page",
+          "examples": ["http://localhost:3000/docs/chapter-1-intro"]
+        },
+        "pathname": {
+          "type": "string",
+          "description": "Path component of URL",
+          "examples": ["/docs/chapter-1-intro", "/docs/chapter-3-kinematics"]
+        },
+        "chapter": {
+          "type": "string",
+          "description": "Chapter title extracted from page",
+          "examples": ["Chapter 1 - Introduction to ROS 2", "Chapter 3 - Forward Kinematics"]
+        },
+        "section": {
+          "type": "string",
+          "description": "Section title extracted from page",
+          "examples": ["1.1 Overview", "3.2 Mathematical Formulation"]
+        },
+        "docId": {
+          "type": "string",
+          "description": "Docusaurus internal document ID"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "Confidence level in extracted metadata",
+          "default": "low"
+        }
+      }
+    },
+    "sessionId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Session ID for correlating related questions (optional)",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "question": "What is forward kinematics?"
+    },
+    {
+      "question": "Explain this concept",
+      "selectedText": "The forward kinematics problem...",
+      "pageContext": {
+        "url": "http://localhost:3000/docs/chapter-3",
+        "chapter": "Chapter 3 - Kinematics",
+        "section": "3.1 Forward Kinematics",
+        "confidence": "high"
+      },
+      "sessionId": "550e8400-e29b-41d4-a716-446655440000"
+    }
+  ]
+}
