@@ -71,37 +71,37 @@
 
 **Frontend Hooks**:
 
-- [ ] T009 [P] Implement `frontend/src/hooks/useTextSelection.ts` hook to:
+- [x] T009 [P] Implement `frontend/src/hooks/useTextSelection.ts` hook to:
   - Listen to mouseup and touchend events on document
   - Call window.getSelection() to get selected text
   - Calculate DOMRect coordinates for selected range
   - Return {text, x, y, timestamp} or null if no selection
   - Include error handling for unsupported browsers
 
-- [ ] T010 [P] Implement `frontend/src/hooks/useSelectionTooltip.ts` hook to:
+- [x] T010 [P] Implement `frontend/src/hooks/useSelectionTooltip.ts` hook to:
   - Manage tooltip visibility state (isVisible, isDismissed)
   - Handle tooltip dismissal (Escape key, click outside, scroll)
   - Debounce selection updates (50ms)
   - Return tooltip state and handlers (show, hide, dismiss)
 
-- [ ] T011 [P] Implement selection validation utility at `frontend/src/utils/selection.utils.ts`:
+- [x] T011 [P] Implement selection validation utility at `frontend/src/utils/selection.utils.ts`:
   - `validateSelection(text: string): boolean` - check not empty/whitespace
   - `truncateSelection(text: string, maxLength: number): string` - trim long selections
   - `normalizeText(text: string): string` - clean whitespace
 
-- [ ] T012 [P] Implement tooltip positioning utility at `frontend/src/utils/positioning.utils.ts`:
+- [x] T012 [P] Implement tooltip positioning utility at `frontend/src/utils/positioning.utils.ts`:
   - `calculateTooltipPosition(rect: DOMRect, viewportHeight: number): {x, y}` - position above/below selection
   - `isTooltipVisible(x: number, y: number, viewportWidth: number, viewportHeight: number): boolean` - check clipping
   - `adjustTooltipForViewport(x: number, y: number, tooltipWidth: number, tooltipHeight: number): {x, y}` - reposition if clipped
 
 **Backend Utilities**:
 
-- [ ] T013 [P] Implement TF-IDF utilities at `backend/app/services/utils/search_boosting.py`:
+- [x] T013 [P] Implement TF-IDF utilities at `backend/app/services/utils/search_boosting.py`:
   - `extract_terms(text: str) -> List[str]` - tokenize and remove stopwords
   - `calculate_term_frequency(terms: List[str], text: str) -> Dict[str, float]` - compute TF scores
   - `apply_boost_factor(score: float, tf_weight: float, boost_factor: float = 1.5) -> float` - apply boost to cosine similarity
 
-- [ ] T014 [P] Implement request validation utility at `backend/app/services/utils/validation.py`:
+- [x] T014 [P] Implement request validation utility at `backend/app/services/utils/validation.py`:
   - `validate_selected_text(text: Optional[str]) -> bool` - check length (0-500), encoding
   - `validate_question(question: str) -> bool` - check length (1-2000)
   - `normalize_selected_text(text: Optional[str]) -> Optional[str]` - strip whitespace
