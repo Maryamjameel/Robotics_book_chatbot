@@ -420,6 +420,15 @@ frontend/
 └── .gitignore
 ```
 
+
+
+
+
+
+
+
+
+
 ---
 
 ## **PROJECT 2: CHATBOT UI + RAG + URDU TRANSLATION**
@@ -428,106 +437,77 @@ frontend/
 
 ---
 
-### **Phase 2.1: Database & Vector Store Setup**
+### **Phase 2.1: Qdrant Vector Store Setup**
 
 #### **📋 Description**
-Design database schema, set up Qdrant vector database, generate embeddings from chapters using Gemini, and prepare for RAG.
+Set up Qdrant vector database, generate embeddings from chapters, and prepare for RAG.
 
 #### **🛠️ Tech Stack**
-- **Database**: PostgreSQL (Neon - free tier)
-- **Vector DB**: Qdrant (Docker or Cloud)
-- **Embedding Model**: Google Gemini `embedding-001` (768 dimensions, FREE)
-- **ORM**: SQLAlchemy with asyncpg
-- **Migration**: Alembic
+- **Vector DB**: Qdrant (Docker or Cloud) ⭐ PRIMARY
+- **Message Storage**: In-memory or local file (for MVP)
 
 #### **🤖 Agents & Skills**
-- **Agent**: `database-schema` ⭐ PRIMARY - Design database schema
-- **Skill**: `Database_Migration_Skill` - Create migration scripts
 - **Skill**: `Vector_Embedding_Skill` ⭐ PRIMARY - Generate embeddings and Qdrant setup
-- **Agent**: `code-reviewer` - Review database models
+- **Agent**: `code-reviewer` - Review scripts
+- **Agent**: `database-schema` - Optional schema if adding chat history later
 
 #### **💬 Prompts to Use**
 
-**Prompt 1: Database Schema Design**
+**Prompt 1: Qdrant Setup & Embeddings**
 ```
-Create database schema for chatbot:
-
-Tables needed:
-- chapters (id, title, slug, chapter_number, content, summary, timestamps)
-- chatbot_conversations (id, session_id, created_at)
-- chatbot_messages (id, conversation_id, role, content, selected_text, sources, created_at)
-- translations (id, chapter_id, language_code, translated_content, created_at)
-
-Include:
-- Indexes for performance
-- Foreign key constraints
-- SQLAlchemy ORM models
-- Migration scripts
-
-Use database-schema agent.
-Use Database_Migration_Skill for migrations.
-```
-
-**Prompt 2: Qdrant Setup & Embeddings**
-```
-Set up vector embeddings with Qdrant:
+Set up vector embeddings with Qdrant for RAG:
 
 1. Setup Qdrant collection:
    - Name: "chapter_embeddings"
-   - Vector size: 768 (Gemini embedding-001)
+   - Vector size: 768
    - Distance: COSINE
-   - Payload indexes: chapter_id, section_number
+   - Payload indexes: chapter_id, section_number, title
 
-2. Text chunking script:
+2. Text chunking script: backend/scripts/chunk_chapters.py
    - Read markdown files from frontend/docs/chapters/
    - Split by ## headers (sections)
    - Extract metadata: chapter_id, title, section_number, content
 
-3. Generate embeddings using Gemini:
-   - Model: "models/embedding-001" (FREE)
+3. Generate embeddings: backend/scripts/generate_embeddings.py
+   - Model: ""
    - Batch processing with rate limiting
-   - Save embeddings with metadata
+   - Handle API rate limits
 
-4. Insert into Qdrant with payload
+4. Insert into Qdrant: backend/scripts/insert_qdrant.py
+   - Connect to Qdrant instance
+   - Insert vectors with payload (metadata)
+   - Verify insertion success
 
-5. Seed chapter metadata to Postgres
-
-6. Create end-to-end pipeline script
+5. Create end-to-end pipeline: backend/scripts/process_all.py
+   - Orchestrate chunking → embeddings → insertion
+   - Handle errors gracefully
 
 Use Vector_Embedding_Skill.
 Review with code-reviewer agent.
 ```
 
 #### **📦 Deliverables**
-- ✅ PostgreSQL schema created (4 tables)
-- ✅ SQLAlchemy models defined
-- ✅ Migration scripts created
-- ✅ Qdrant collection configured
+- ✅ Qdrant instance running
+- ✅ Qdrant collection configured (chapter_embeddings)
 - ✅ Text chunking script (by sections)
 - ✅ Embedding generation script (Gemini)
 - ✅ All chapters embedded in Qdrant
-- ✅ Chapter metadata in Postgres
+- ✅ Metadata properly indexed
 - ✅ Test query returns relevant chunks
+- ✅ End-to-end pipeline working
 
 #### **📁 Folder Structure**
 ```
 backend/
-├── app/
-│   └── models/
-│       └── database.py          # SQLAlchemy models
-├── migrations/
-│   ├── 001_initial_schema.sql
-│   └── migrate.py
 ├── scripts/
-│   ├── chunk_chapters.py
-│   ├── generate_embeddings.py
-│   ├── insert_qdrant.py
-│   ├── seed_chapters.py
-│   ├── process_all.py
-│   └── setup_qdrant.py
+│   ├── chunk_chapters.py        # Text chunking
+│   ├── generate_embeddings.py   # Gemini embeddings
+│   ├── insert_qdrant.py         # Qdrant insertion
+│   ├── process_all.py           # End-to-end pipeline
+│   └── setup_qdrant.py          # Qdrant collection setup
 ├── data/
-│   └── chunks.json
-├── .env
+│   └── chunks.json              # Intermediate data
+├── .env                         # Gemini API key, Qdrant URL
 └── requirements.txt
 ```
 
@@ -540,10 +520,10 @@ Build FastAPI backend with RAG pipeline: embed questions, retrieve from Qdrant, 
 
 #### **🛠️ Tech Stack**
 - **Framework**: FastAPI (async)
-- **LLM**: Google Gemini Pro (FREE)
-- **Database**: PostgreSQL (async with asyncpg)
+- **LLM**: Google Gemini (FREE)
 - **Vector DB**: Qdrant Python client
 - **Validation**: Pydantic v2
+
 
 #### **🤖 Agents & Skills**
 - **Agent**: `backend-development` ⭐ PRIMARY - Build FastAPI services
@@ -587,7 +567,7 @@ Test with test-runner agent.
 - ✅ Gemini integration (embeddings + generation)
 - ✅ Qdrant search with filtering
 - ✅ Selected-text context boosting
-- ✅ Chat history saved to Postgres
+- ✅ Chat responses with source citations
 - ✅ API documentation at `/docs`
 - ✅ Error handling and logging
 - ✅ CORS configured
@@ -615,82 +595,82 @@ backend/tests/
 
 ---
 
-### **Phase 2.3: React Chatbot Widget - Core UI**
+### **Phase 2.3: ChatKit Chatbot Integration**
 
 #### **📋 Description**
-Build floating chatbot widget with message bubbles, input field, source citations, selected-text capture, and collapsible interface.
+Integrate ChatKit SDK into Docusaurus for AI-powered chatbot with RAG backend, message persistence, source citations, and selected-text capture.
 
 #### **🛠️ Tech Stack**
-- **Framework**: React (TypeScript)
-- **Styling**: CSS Modules
-- **State**: React hooks
-- **HTTP**: Fetch API
+- **Chatbot SDK**: ChatKit (Official OpenAI Chatbot Framework)
+- **Backend**: FastAPI (already built in Phase 2.2)
 - **Integration**: Docusaurus theme swizzling
+- **HTTP**: ChatKit built-in API client
+- **Styling**: ChatKit default + CSS customization
 
 #### **🤖 Agents & Skills**
-- **Agent**: `frontend-integration` ⭐ PRIMARY - Build React components
-- **Skill**: `Component_Generation_Skill` ⭐ PRIMARY - Generate chatbot widget
+- **Agent**: `frontend-integration` ⭐ PRIMARY - ChatKit integration
 - **Agent**: `code-reviewer` - Code quality review
+- **Skill**: `API_Design_Skill` - Verify RAG API compatibility with ChatKit
 
 #### **💬 Prompts to Use**
 
-**Prompt 1: Create Chatbot Widget**
+**Prompt 1: Integrate ChatKit SDK**
 ```
-Create React chatbot widget for Docusaurus:
+Integrate ChatKit chatbot SDK into Docusaurus:
+use context7 for latest docs
 
-Component: frontend/src/components/ChatbotWidget/ChatbotWidget.tsx
+1. Install ChatKit SDK
+
+2. Create ChatKit configuration: frontend/src/config/chatkit.ts
+   - API endpoint: http://localhost:8000/api/v1/chat/ask
+   - Default system message for RAG context
+   - API key handling (if needed)
+   - Model: Use Gemini (free) via FastAPI proxy
+
+3. Integrate in Root component: frontend/src/theme/Root.tsx
+   - Wrap app with ChatKitProvider
+   - Pass configuration
+   - Handle authentication (skip for MVP)
+
+4. Add ChatKit widget to Docusaurus:
+   - Mount ChatKit chat window (bottom-right)
+   - Auto-open on user interaction
+   - Capture page context (chapter, URL)
+   - Pass to backend RAG endpoint
+
+5. Customize styling:
+   - Match Docusaurus theme colors
+   - Dark mode support
+   - Mobile responsive
 
 Requirements:
-- Floating button (bottom-right, 60px diameter)
-- Expandable chat window (400x600px)
-- Message list (scrollable, user/assistant bubbles)
-- Input field with send button
-- Capture selected text from page (window.getSelection())
-- Display sources below answers
-- Loading indicator ("Thinking...")
-- Error handling
-- Auto-scroll to latest message
+- ChatKit sends/receives messages via FastAPI backend
+- Support selected-text context passing
 
-Styling: ChatbotWidget.module.css
-- Purple gradient button
-- White chat window with shadow
-- Message bubbles (user: blue, assistant: gray)
-- Smooth animations
-- Mobile responsive
-
-Integration: frontend/src/theme/Root.tsx
-- Swizzle Docusaurus Root
-- Render ChatbotWidget globally
-
-TypeScript types: frontend/src/types/chat.ts
-
-Use frontend-integration agent and Component_Generation_Skill.
-Review with code-reviewer agent.
+Use frontend-integration agent and code-reviewer.
 ```
 
 #### **📦 Deliverables**
-- ✅ ChatbotWidget component created
-- ✅ Floating button with toggle
-- ✅ Chat UI with message bubbles
-- ✅ Selected text capture
-- ✅ Source citations displayed
-- ✅ Loading state indicator
-- ✅ Error handling
+- ✅ ChatKit SDK installed and configured
+- ✅ ChatKit provider setup in Root.tsx
+- ✅ Chat window integrated into Docusaurus
+- ✅ Messages routed to FastAPI /chat/ask endpoint
+- ✅ RAG responses displayed with sources
+- ✅ Theme customization complete
 - ✅ Mobile responsive
-- ✅ Integrated via Root.tsx
-- ✅ TypeScript types defined
+- ✅ Message history persisted
+- ✅ Error handling working
+- ✅ Loading states visible
 
 #### **📁 Folder Structure**
 ```
 frontend/src/
-├── components/
-│   └── ChatbotWidget/
-│       ├── ChatbotWidget.tsx
-│       └── ChatbotWidget.module.css
+├── config/
+│   └── chatkit.ts                # ChatKit configuration
 ├── theme/
-│   └── Root.tsx
+│   └── Root.tsx                  # ChatKit provider + widget
 └── types/
-    └── chat.ts
+    └── chat.ts                   # Type definitions for RAG responses
 ```
 
 ---
@@ -698,56 +678,60 @@ frontend/src/
 ### **Phase 2.4: Selected-Text Question Feature**
 
 #### **📋 Description**
-Implement text selection detection, show "Ask about this" tooltip on selection, pre-fill chatbot with context, filter RAG to prioritize selected section.
+Implement text selection detection, show "Ask about this" tooltip on selection, pass selected text to ChatKit, and boost RAG search results for selected content.
 
 #### **🛠️ Tech Stack**
 - **Browser API**: `window.getSelection()`
-- **React**: Event listeners and state
+- **ChatKit Integration**: Pass context to ChatKit API
 - **CSS**: Tooltip positioning
+- **Backend**: Qdrant boosting for selected text
 
 #### **🤖 Agents & Skills**
-- **Agent**: `frontend-integration` - Implement selection detection
-- **Agent**: `code-reviewer` - Review selection logic
+- **Agent**: `frontend-integration` - Selection detection + ChatKit integration
+- **Agent**: `backend-development` - Qdrant boosting logic
+- **Agent**: `code-reviewer` - Review implementation
 
 #### **💬 Prompts to Use**
 
-**Prompt 1: Implement Text Selection**
+**Prompt 1: Text Selection with ChatKit**
 ```
-Implement selected-text question feature:
+Implement selected-text feature with ChatKit:
 
 1. Create hook: frontend/src/hooks/useTextSelection.ts
    - Listen for mouseup/touchend events
    - Get selected text via window.getSelection()
    - Return { text, x, y } for tooltip positioning
 
-2. Create tooltip: frontend/src/components/SelectionTooltip/SelectionTooltip.tsx
+2. Create SelectionTooltip: frontend/src/components/SelectionTooltip/SelectionTooltip.tsx
    - Position at selection coordinates
    - Show "💬 Ask about this" button
    - Dismiss button
+   - On click: trigger ChatKit with selected text context
 
-3. Update ChatbotWidget:
-   - Accept initialQuestion and initialSelectedText props
-   - Auto-open when props provided
-
-4. Integrate in Root.tsx:
+3. Integrate with ChatKit in Root.tsx:
    - Use useTextSelection hook
    - Show SelectionTooltip when text selected
-   - Pass selection to ChatbotWidget
+   - Open ChatKit and pre-fill with selected text
+   - ChatKit sends selection context to FastAPI endpoint
 
-5. Backend enhancement:
-   - Boost Qdrant search results containing selected text
-   - Update qdrant_service.py
+4. Backend enhancement: backend/app/services/qdrant_service.py
+   - Accept selected_text parameter in search request
+   - Boost Qdrant search results that contain selected text
+   - Weight boost by relevance
 
-Use frontend-integration agent.
-Review with code-reviewer agent.
+5. Update FastAPI endpoint: backend/app/api/v1/routes/chat.py
+   - Accept optional selected_text field in ChatRequest
+   - Pass to qdrant_service for boosting
+
+Use frontend-integration agent and backend-development agent.
 ```
 
 #### **📦 Deliverables**
 - ✅ Text selection hook
-- ✅ Tooltip on text selection
-- ✅ "Ask about this" button functional
-- ✅ Selected text pre-fills chatbot
-- ✅ Backend boosts relevant results
+- ✅ Selection tooltip with button
+- ✅ ChatKit opens with selected text context
+- ✅ Selected text boosted in RAG search
+- ✅ Backend scoring prioritizes selected sections
 - ✅ Tooltip dismisses after use
 - ✅ Works on mobile (touch events)
 - ✅ Smooth animations
@@ -758,16 +742,17 @@ frontend/src/
 ├── hooks/
 │   └── useTextSelection.ts
 ├── components/
-│   ├── ChatbotWidget/
-│   │   └── ChatbotWidget.tsx    (updated)
 │   └── SelectionTooltip/
 │       ├── SelectionTooltip.tsx
 │       └── SelectionTooltip.module.css
 └── theme/
-    └── Root.tsx                 (updated)
+    └── Root.tsx                 (updated for ChatKit)
 
-backend/app/services/
-└── qdrant_service.py            (updated)
+backend/app/
+├── api/v1/routes/
+│   └── chat.py                  (updated)
+└── services/
+    └── qdrant_service.py        (updated)
 ```
 
 ---
@@ -775,13 +760,13 @@ backend/app/services/
 ### **Phase 2.5: Urdu Translation Integration**
 
 #### **📋 Description**
-Add "Translate to Urdu" button, implement translation with Gemini, cache in database, handle RTL text, preserve code blocks/equations.
+Add "Translate to Urdu" button, implement translation with Gemini, cache translations, handle RTL text, preserve code blocks/equations.
 
 #### **🛠️ Tech Stack**
 - **Translation**: Google Gemini Pro (FREE)
-- **Database**: PostgreSQL (caching)
+- **Caching**: In-memory cache (or optional PostgreSQL for persistence)
 - **RTL Support**: CSS `direction: rtl`
-- **React**: Translation button component
+- **Frontend**: ChatKit integration + button component
 
 #### **🤖 Agents & Skills**
 - **Agent**: `urdu-academic-translator` ⭐ PRIMARY - High-quality Urdu translation
@@ -802,13 +787,13 @@ Backend: backend/app/services/translation_service.py
   * Preserve LaTeX equations
   * Maintain markdown structure
   * Transliterate technical terms
-- Check cache first (translations table)
-- Cache results after translation
+- Implement in-memory caching with Python dict
+- Optional: Add Redis for distributed caching later
 
 Endpoint: backend/app/api/v1/routes/translation.py
 - POST /api/v1/translation/translate
-- Accept chapter_id
-- Return translated_content and cached flag
+- Accept chapter_id or chapter_content
+- Return translated_content
 
 Use urdu-academic-translator agent and Translation_Skill.
 ```
@@ -841,7 +826,7 @@ Validate with urdu-academic-translator agent.
 #### **📦 Deliverables**
 - ✅ Translation service with Gemini
 - ✅ Translation endpoint
-- ✅ Translation caching
+- ✅ In-memory translation caching
 - ✅ "Translate to Urdu" button on chapters
 - ✅ RTL text rendering
 - ✅ Code blocks preserved
@@ -873,14 +858,14 @@ frontend/src/
 
 ---
 
-### **Phase 2.6: Chatbot-Docusaurus Integration**
+### **Phase 2.6: ChatKit-Docusaurus Integration**
 
 #### **📋 Description**
-Final integration: ensure chatbot appears on all pages, passes chapter context, matches Docusaurus theme, works on deployed site.
+Final integration: ensure ChatKit appears on all pages, passes chapter context, matches Docusaurus theme, works on deployed site.
 
 #### **🛠️ Tech Stack**
-- **Integration**: Docusaurus theme system
-- **Context**: React hooks
+- **Integration**: Docusaurus theme system + ChatKit Provider
+- **Context**: ChatKit hooks and context
 - **Styling**: CSS variables for theme matching
 
 #### **🤖 Agents & Skills**
@@ -892,21 +877,22 @@ Final integration: ensure chatbot appears on all pages, passes chapter context, 
 
 **Prompt 1: Chapter Context Detection**
 ```
-Implement chapter context awareness:
+Implement chapter context awareness with ChatKit:
 
 Hook: frontend/src/hooks/useChapterContext.ts
 - Extract chapter_id from URL
 - Extract chapter_title from page h1
 - Return { chapterId, chapterTitle, chapterSlug }
 
-Update ChatbotWidget:
-- Accept chapterContext prop
-- Show chapter in header badge
-- Pass to backend in chat request
+Update ChatKit Integration:
+- Pass chapterContext via ChatKit provider props
+- Show chapter in chat header/badge
+- Send chapter_context in API requests
 
 Update Backend:
 - Accept chapter_context in ChatRequest schema
 - Filter Qdrant search by chapter_id if provided
+- Prioritize results from current chapter
 
 Use frontend-integration agent.
 ```
@@ -915,11 +901,12 @@ Use frontend-integration agent.
 ```
 Match Docusaurus theme and test:
 
-1. Update CSS to use Docusaurus variables:
-   - --ifm-color-primary
-   - --ifm-background-color
-   - --ifm-font-color-base
-   - Support dark mode
+1. ChatKit styling configuration:
+   - Custom theme to match Docusaurus variables:
+     * --ifm-color-primary
+     * --ifm-background-color
+     * --ifm-font-color-base
+   - Support dark mode via Docusaurus theme toggle
 
 2. Production API URL:
    - Create config/api.ts
@@ -927,22 +914,23 @@ Match Docusaurus theme and test:
    - Switch based on NODE_ENV
 
 3. End-to-end tests:
-   - Chatbot appears on all pages
-   - Selected text opens chatbot
+   - ChatKit appears on all pages
+   - Selected text opens ChatKit
    - Chapter context passed correctly
-   - Sources displayed
-   - Translation works
+   - Sources displayed correctly
+   - Translation works (Urdu button)
    - Mobile responsive
+   - Message persistence
 
 Use test-runner agent for E2E tests.
 Use code-reviewer agent for final review.
 ```
 
 #### **📦 Deliverables**
-- ✅ Chatbot on all Docusaurus pages
+- ✅ ChatKit on all Docusaurus pages
 - ✅ Chapter context auto-detected
 - ✅ Chapter filtering in RAG
-- ✅ Theme matches Docusaurus
+- ✅ Theme matches Docusaurus (light/dark)
 - ✅ Production API URL configured
 - ✅ End-to-end tests passing
 - ✅ Mobile responsive
@@ -953,15 +941,12 @@ Use code-reviewer agent for final review.
 frontend/src/
 ├── hooks/
 │   ├── useTextSelection.ts
-│   └── useChapterContext.ts     # NEW
+│   └── useChapterContext.ts
 ├── config/
+│   ├── chatkit.ts               # ChatKit configuration
 │   └── api.ts                   # API URL config
-├── components/
-│   └── ChatbotWidget/
-│       ├── ChatbotWidget.tsx    (updated)
-│       └── ChatbotWidget.module.css (theme variables)
 └── theme/
-    └── Root.tsx                 (final integration)
+    └── Root.tsx                 # ChatKit provider + integration
 
 frontend/tests/
 └── e2e/
@@ -970,14 +955,15 @@ frontend/tests/
 
 ---
 
-## **BONUS FEATURES**
+## **BONUS FEATURES** (After MVP - Optional Auth Phase)
 
 ---
 
-### **Bonus Phase 1: Better-Auth Signup/Signin**
+### **Bonus Phase 1: PostgreSQL + Better-Auth Signup/Signin**
 
 #### **📋 Description**
-Implement user authentication with Better-Auth, collect user profiles (software/hardware background, experience level), manage JWT sessions.
+*(Only needed if you add authentication later)*
+Implement user authentication with Better-Auth, collect user profiles (software/hardware background, experience level), manage JWT sessions. This requires PostgreSQL database setup.
 
 #### **🛠️ Tech Stack**
 - **Auth**: Better-Auth (https://www.better-auth.com/)
@@ -1048,6 +1034,7 @@ frontend/src/
 ### **Bonus Phase 2: Content Personalization**
 
 #### **📋 Description**
+*(Requires Bonus Phase 1 - Authentication to be implemented first)*
 Personalize chapter content based on user profile (software/hardware background, experience level) using Gemini to adapt explanations and code examples.
 
 #### **🛠️ Tech Stack**
@@ -1123,7 +1110,7 @@ frontend/src/
 
 ---
 
-## **FINAL FOLDER STRUCTURE**
+## **FINAL FOLDER STRUCTURE (MVP)**
 
 ```
 Robotics_book_chatbot/
@@ -1133,11 +1120,10 @@ Robotics_book_chatbot/
 │   │   ├── glossary.md
 │   │   └── intro.md
 │   ├── src/
-│   │   ├── components/           (ChatbotWidget, TranslateButton, etc.)
 │   │   ├── hooks/                (useTextSelection, useChapterContext)
-│   │   ├── theme/                (Root, DocItem - swizzled)
+│   │   ├── config/               (chatkit.ts, api.ts)
+│   │   ├── theme/                (Root - ChatKit provider)
 │   │   ├── types/                (TypeScript interfaces)
-│   │   ├── config/               (API URL config)
 │   │   └── css/
 │   ├── static/
 │   │   └── img/
@@ -1145,15 +1131,15 @@ Robotics_book_chatbot/
 │   ├── sidebars.js
 │   └── package.json
 │
-├── backend/                      # PROJECT 2: RAG + Chatbot + Translation
+├── backend/                      # PROJECT 2: RAG + FastAPI + Qdrant
 │   ├── app/
 │   │   ├── main.py
 │   │   ├── config.py
-│   │   ├── api/v1/routes/        (chat, translation, auth, personalization)
-│   │   ├── models/               (database, schemas)
-│   │   └── services/             (gemini, qdrant, rag, db, translation, auth, personalization)
-│   ├── migrations/
-│   ├── scripts/                  (chunking, embeddings, seeding)
+│   │   ├── api/v1/routes/        (chat.py, translation.py)
+│   │   ├── models/
+│   │   │   └── schemas.py        (Pydantic models)
+│   │   └── services/             (gemini_service.py, qdrant_service.py, rag_service.py, translation_service.py)
+│   ├── scripts/                  (chunking, embeddings, qdrant setup)
 │   ├── tests/
 │   ├── .env
 │   └── requirements.txt
@@ -1168,40 +1154,43 @@ Robotics_book_chatbot/
 └── README.md
 ```
 
+**Note:** PostgreSQL not required for MVP. Only needed for Bonus Phase 1 (Authentication).
+
 ---
 
-## **EXECUTION CHECKLIST**
+## **EXECUTION CHECKLIST (MVP)**
 
 ### **Day 1: Foundation (4-5 hours)**
 - [ ] Phase 1.1: Docusaurus setup
 - [ ] Phase 1.2: Chapter outlines
-- [ ] Phase 2.1: Database + Qdrant setup
+- [ ] Phase 2.1: Qdrant + Gemini setup
 
 ### **Day 2: Content (4-5 hours)**
 - [ ] Phase 1.3: Write 3 chapters
 - [ ] Phase 1.4: Create glossary
-
-### **Day 3: Backend (4-5 hours)**
-- [ ] Phase 2.2: RAG backend API
 - [ ] Phase 2.1 (cont): Generate embeddings
 
+### **Day 3: Backend (4-5 hours)**
+- [ ] Phase 2.2: FastAPI RAG backend
+- [ ] Test API endpoints
+
 ### **Day 4: Frontend (4-5 hours)**
-- [ ] Phase 2.3: Chatbot widget UI
+- [ ] Phase 2.3: ChatKit integration
 - [ ] Phase 2.4: Selected-text feature
 - [ ] Phase 2.5: Urdu translation
 
 ### **Day 5: Integration & Deploy (3-4 hours)**
-- [ ] Phase 2.6: Final integration
+- [ ] Phase 2.6: ChatKit-Docusaurus integration
 - [ ] Phase 1.5: Deploy to GitHub Pages
-- [ ] Testing and polish
+- [ ] End-to-end testing
 
-### **Bonus (if time permits)**
-- [ ] Bonus Phase 1: Authentication
-- [ ] Bonus Phase 2: Personalization
+### **Bonus Features (if time permits)**
+- [ ] Bonus Phase 1: Better-Auth + PostgreSQL
+- [ ] Bonus Phase 2: Content Personalization
 
 ---
 
-## **QUICK REFERENCE: AGENTS & SKILLS BY PHASE**
+## **QUICK REFERENCE: AGENTS & SKILLS BY PHASE (MVP)**
 
 | Phase | Primary Agent/Skill | Supporting Tools |
 |-------|-------------------|------------------|
@@ -1210,21 +1199,39 @@ Robotics_book_chatbot/
 | 1.3 | textbook-author agent | Example_Generator_Skill, Code_Explanation_Skill, Markdown_formatting_Skill, qa-validation-reviewer |
 | 1.4 | glossary-manager agent | Glossary_Expansion_Skill, Context_Extraction_Skill |
 | 1.5 | Manual | - |
-| 2.1 | database-schema agent, Vector_Embedding_Skill | Database_Migration_Skill, code-reviewer |
+| 2.1 | Vector_Embedding_Skill | code-reviewer |
 | 2.2 | backend-development agent, API_Design_Skill | code-reviewer, test-runner |
-| 2.3 | frontend-integration agent, Component_Generation_Skill | code-reviewer |
-| 2.4 | frontend-integration agent | code-reviewer |
+| 2.3 | frontend-integration agent | code-reviewer, API_Design_Skill |
+| 2.4 | frontend-integration agent, backend-development agent | code-reviewer |
 | 2.5 | urdu-academic-translator agent, Translation_Skill | backend-development, API_Design_Skill |
 | 2.6 | frontend-integration agent | test-runner, code-reviewer |
-| Bonus 1 | authentication agent | database-schema, API_Design_Skill |
-| Bonus 2 | content-personalizer agent, Personalization_Rewrite_Skill | backend-development |
+| **Bonus 1** | **authentication agent** | **database-schema, API_Design_Skill** |
+| **Bonus 2** | **content-personalizer agent, Personalization_Rewrite_Skill** | **backend-development** |
 
 ---
 
 **Total Estimated Time:**
-- **Core MVP**: 20-25 hours
-- **Bonus Features**: +6-8 hours
+- **Core MVP (ChatKit + FastAPI + Qdrant)**: 18-22 hours
+- **Bonus Features (Auth + Personalization)**: +8-10 hours
 
 ---
 
-**Ready to start building! 🚀**
+## **TECH STACK SUMMARY**
+
+**MVP Stack:**
+- Frontend: Docusaurus + ChatKit SDK (no React components)
+- Backend: FastAPI + Gemini API
+- Vector DB: Qdrant + Gemini embeddings
+- Translation: Gemini Pro + in-memory cache
+- Database: None required (PostgreSQL optional for Bonus Phase 1)
+
+**Key Differences from Original:**
+✅ Replaced React ChatbotWidget with ChatKit SDK
+✅ Removed PostgreSQL requirement (optional for auth only)
+✅ Simplified message storage (in-memory for MVP)
+✅ Kept FastAPI, Qdrant, Gemini as core
+✅ No auth required for MVP
+
+---
+
+**Ready to start building with ChatKit! 🚀**
