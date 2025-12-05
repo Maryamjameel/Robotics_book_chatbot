@@ -46,14 +46,14 @@
 
 **Tasks**:
 
-- [ ] T001 Create TypeScript types file at `frontend/src/types/selected-text.types.ts` with TextSelection, SelectionTooltipState, and SelectionCoordinates interfaces
-- [ ] T002 Create directory structure: `frontend/src/hooks/`, `frontend/src/components/SelectionTooltip/`, `frontend/src/components/SelectionTooltip/__tests__/`
-- [ ] T003 Create backend directory structure: `backend/app/services/utils/`, `backend/app/api/schemas/`
-- [ ] T004 Create test directories: `frontend/tests/e2e/`, `frontend/tests/integration/`, `backend/app/api/routes/__tests__/`
-- [ ] T005 Create Pydantic model file at `backend/app/models/chat.py` with ChatRequest including optional `selected_text` field
-- [ ] T006 Create backend schema file at `backend/app/api/schemas/chat_request.py` with request validation (question, selected_text, pageContext, sessionId)
-- [ ] T007 Create utility types file at `frontend/src/utils/selection.utils.ts` with helper functions for text validation and coordinate calculations
-- [ ] T008 Create constants file at `frontend/src/constants/selection.constants.ts` with MAX_SELECTED_TEXT_LENGTH=500, TOOLTIP_DISPLAY_DELAY_MS=0, DEBOUNCE_DELAY_MS=50
+- [x] T001 Create TypeScript types file at `frontend/src/types/selected-text.types.ts` with TextSelection, SelectionTooltipState, and SelectionCoordinates interfaces
+- [x] T002 Create directory structure: `frontend/src/hooks/`, `frontend/src/components/SelectionTooltip/`, `frontend/src/components/SelectionTooltip/__tests__/`
+- [x] T003 Create backend directory structure: `backend/app/services/utils/`, `backend/app/api/schemas/`
+- [x] T004 Create test directories: `frontend/tests/e2e/`, `frontend/tests/integration/`, `backend/app/api/routes/__tests__/`
+- [x] T005 Create Pydantic model file at `backend/app/models/chat.py` with ChatRequest including optional `selected_text` field
+- [x] T006 Create backend schema file at `backend/app/api/schemas/chat_request.py` with request validation (question, selected_text, pageContext, sessionId)
+- [x] T007 Create utility types file at `frontend/src/utils/selection.utils.ts` with helper functions for text validation and coordinate calculations
+- [x] T008 Create constants file at `frontend/src/constants/selection.constants.ts` with MAX_SELECTED_TEXT_LENGTH=500, TOOLTIP_DISPLAY_DELAY_MS=0, DEBOUNCE_DELAY_MS=50
 
 ---
 
