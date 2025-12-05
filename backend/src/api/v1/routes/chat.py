@@ -65,12 +65,43 @@ async def ask_question(request: ChatRequest, http_request: Request) -> ChatRespo
                 detail="Question must be 2000 characters or less",
             )
 
+        # Validate selected_text if provided
+        selected_text_boosted = False
+        if request.selected_text is not None:
+            if len(request.selected_text) > 500:
+                logger.warning(
+                    "Selected text exceeds maximum length",
+                    extra={
+                        "operation": "chat_ask",
+                        "request_id": request_id,
+                        "selected_text_length": len(request.selected_text),
+                        "status": "bad_request",
+                    },
+                )
+                raise HTTPException(
+                    status_code=400,
+                    detail="Selected text must be 500 characters or less",
+                )
+
+            # Check if selected text is not just whitespace
+            if request.selected_text.strip():
+                selected_text_boosted = True
+                logger.debug(
+                    "Selected text provided for search boosting",
+                    extra={
+                        "operation": "chat_ask",
+                        "request_id": request_id,
+                        "selected_text_length": len(request.selected_text),
+                    },
+                )
+
         logger.info(
             "Chat question received",
             extra={
                 "operation": "chat_ask",
                 "request_id": request_id,
                 "question_length": len(request.question),
+                "selected_text_provided": selected_text_boosted,
                 "has_filters": request.filters is not None,
                 "status": "received",
             },
@@ -79,6 +110,7 @@ async def ask_question(request: ChatRequest, http_request: Request) -> ChatRespo
         # Phase 4: Real vector search integration
         from src.services.embedding_service import embed_question
         from src.services.qdrant_service import search_chunks
+        from src.services.utils.search_boosting import SearchBoostingEngine
 
         search_start = time.time()
 
@@ -94,7 +126,46 @@ async def ask_question(request: ChatRequest, http_request: Request) -> ChatRespo
 
         search_latency_ms = (time.time() - search_start) * 1000
 
-        # Step 3: Handle no results case
+        # Step 3: Apply search boosting if selected text provided
+        boosting_engine = SearchBoostingEngine()
+        boost_metadata = {}
+
+        if selected_text_boosted and retrieved_chunks:
+            try:
+                # Apply TF-IDF boosting to re-rank results
+                retrieved_chunks = boosting_engine.boost_scores(
+                    search_results=retrieved_chunks,
+                    selected_text=request.selected_text
+                )
+
+                # Get boosting metadata for response
+                boost_metadata = boosting_engine.get_boost_metadata(
+                    selected_text=request.selected_text
+                )
+
+                logger.debug(
+                    "Search results boosted with selected text",
+                    extra={
+                        "operation": "chat_ask",
+                        "request_id": request_id,
+                        "boost_factor": boost_metadata.get("boost_factor"),
+                        "terms_extracted": len(boost_metadata.get("terms", [])),
+                        "status": "boosting_applied",
+                    },
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Search boosting failed, using original results: {str(e)}",
+                    extra={
+                        "operation": "chat_ask",
+                        "request_id": request_id,
+                        "error": str(e),
+                        "status": "boosting_failed",
+                    },
+                )
+                # Continue with original results if boosting fails
+
+        # Step 4: Handle no results case
         if not retrieved_chunks:
             logger.info(
                 "No relevant content found",
@@ -115,17 +186,23 @@ async def ask_question(request: ChatRequest, http_request: Request) -> ChatRespo
                 ),
             )
 
-        # Step 4: Call RAG service to generate answer from chunks
+        # Step 5: Call RAG service to generate answer from chunks
         response = await rag_service.answer_question(
             question=request.question,
             retrieved_chunks=retrieved_chunks,
             request_id=request_id,
         )
 
-        # Update search latency in response metadata
+        # Step 6: Update response metadata with latency and boosting info
         response.metadata.search_latency_ms = search_latency_ms
         total_latency_ms = (time.time() - pipeline_start) * 1000
         response.metadata.total_latency_ms = total_latency_ms
+
+        # Add boosting metadata if boosting was applied
+        if boost_metadata:
+            response.metadata.selected_text_boosted = True
+            response.metadata.boost_factor = boost_metadata.get("boost_factor", 1.0)
+            response.metadata.selected_text_terms = boost_metadata.get("terms", [])
 
         logger.info(
             "Chat question answered successfully",
@@ -136,6 +213,7 @@ async def ask_question(request: ChatRequest, http_request: Request) -> ChatRespo
                 "source_count": len(response.sources),
                 "confidence": response.metadata.confidence_score,
                 "total_latency_ms": total_latency_ms,
+                "selected_text_boosted": bool(boost_metadata),
                 "status": "success",
             },
         )

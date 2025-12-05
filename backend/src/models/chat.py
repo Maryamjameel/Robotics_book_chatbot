@@ -15,6 +15,13 @@ class ChatRequest(BaseModel):
         description="Natural language question about robotics textbook content",
         example="What is forward kinematics?",
     )
+    selected_text: Optional[str] = Field(
+        default=None,
+        min_length=0,
+        max_length=500,
+        description="Optional selected text from the page for context-aware search boosting",
+        example="Forward kinematics calculates the end-effector position given joint angles",
+    )
     filters: Optional[dict] = Field(
         default=None,
         description="Optional filters for vector search (e.g., chapter_id, section_number)",
@@ -28,10 +35,12 @@ class ChatRequest(BaseModel):
             "examples": [
                 {
                     "question": "What is the difference between forward and inverse kinematics?",
+                    "selected_text": None,
                     "filters": None,
                 },
                 {
                     "question": "Explain the Denavit-Hartenberg convention",
+                    "selected_text": "The Denavit-Hartenberg convention is a standard method for describing robot kinematics.",
                     "filters": {"chapter_id": "ch03"},
                 },
             ]
@@ -86,6 +95,23 @@ class RAGMetadata(BaseModel):
     total_latency_ms: float = Field(
         ..., description="Total request latency in milliseconds", example=1575.0
     )
+    selected_text_boosted: Optional[bool] = Field(
+        default=False,
+        description="Whether search results were boosted using selected text via TF-IDF",
+        example=True,
+    )
+    boost_factor: Optional[float] = Field(
+        default=1.0,
+        ge=1.0,
+        le=5.0,
+        description="Boost factor applied to search results (1.0 = no boost, 5.0 = maximum)",
+        example=1.5,
+    )
+    selected_text_terms: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Key terms extracted from selected text and used for TF-IDF boosting",
+        example=["forward", "kinematics"],
+    )
 
 
 class ChatResponse(BaseModel):
@@ -126,7 +152,32 @@ class ChatResponse(BaseModel):
                         "search_latency_ms": 125.0,
                         "generation_latency_ms": 1450.0,
                         "total_latency_ms": 1575.0,
+                        "selected_text_boosted": False,
+                        "boost_factor": 1.0,
+                        "selected_text_terms": [],
                     },
-                }
+                },
+                {
+                    "answer": "Forward kinematics calculates the end-effector position using the Denavit-Hartenberg parameters. The process involves multiplying transformation matrices. Source: Chapter 3, Section 1 - Forward Kinematics",
+                    "sources": [
+                        {
+                            "chapter_id": "ch03",
+                            "chapter_title": "Kinematics",
+                            "section_number": 1,
+                            "section_title": "Forward Kinematics",
+                            "excerpt": "Forward kinematics is...",
+                            "relevance_score": 0.95,
+                        }
+                    ],
+                    "metadata": {
+                        "confidence_score": 0.96,
+                        "search_latency_ms": 115.0,
+                        "generation_latency_ms": 1380.0,
+                        "total_latency_ms": 1495.0,
+                        "selected_text_boosted": True,
+                        "boost_factor": 1.5,
+                        "selected_text_terms": ["forward", "kinematics", "denavit", "hartenberg"],
+                    },
+                },
             ]
         }

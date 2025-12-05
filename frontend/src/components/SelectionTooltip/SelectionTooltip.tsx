@@ -44,6 +44,7 @@ export const SelectionTooltip = React.memo(
   }: SelectionTooltipProps) => {
     const tooltipRef = useRef<HTMLDivElement>(null);
     const askButtonRef = useRef<HTMLButtonElement>(null);
+    const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
     /**
      * Handle "Ask about this" button click
@@ -59,6 +60,46 @@ export const SelectionTooltip = React.memo(
      */
     const handleDismissClick = () => {
       onDismiss();
+    };
+
+    /**
+     * Handle touch start for swipe gesture detection (mobile)
+     */
+    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      }
+    };
+
+    /**
+     * Handle touch end for swipe-to-dismiss gesture (mobile)
+     * Swipe right or left dismisses the tooltip
+     */
+    const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+      if (!touchStartRef.current || e.changedTouches.length !== 1) return;
+
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - touchStartRef.current.x;
+      const deltaY = touch.clientY - touchStartRef.current.y;
+
+      // Horizontal swipe detection (>50px movement)
+      // Ignore if vertical movement is greater (scrolling)
+      if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        onDismiss();
+      }
+
+      touchStartRef.current = null;
+    };
+
+    /**
+     * Handle Escape key press to dismiss tooltip
+     */
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onDismiss();
+      }
     };
 
     /**
@@ -96,6 +137,10 @@ export const SelectionTooltip = React.memo(
         role="dialog"
         aria-label="Text selection action menu"
         data-testid="selection-tooltip"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
       >
         {/* Tooltip content container */}
         <div className="selection-tooltip__content">

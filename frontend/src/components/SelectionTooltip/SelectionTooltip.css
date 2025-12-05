@@ -39,6 +39,11 @@
   max-width: 350px;
   animation: tooltipFadeIn 200ms ease-out;
   transition: all 200ms ease-out;
+
+  /* Mobile touch optimizations */
+  -webkit-touch-callout: none;  /* Prevent context menu on long press */
+  touch-action: manipulation;   /* Prevent double-tap zoom */
+  user-select: none;            /* Prevent text selection on buttons */
 }
 
 /* Dark mode */
@@ -95,6 +100,10 @@
   transition: all 150ms ease-out;
   user-select: none;
   white-space: nowrap;
+
+  /* Mobile touch optimizations */
+  -webkit-tap-highlight-color: transparent;  /* Remove default tap highlight */
+  touch-action: manipulation;                  /* Prevent double-tap zoom */
 }
 
 /* Light mode button styles */
@@ -237,6 +246,39 @@
   /* Show text on secondary button only for icon clarity */
   .selection-tooltip__button--secondary .selection-tooltip__button-icon {
     font-size: 18px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Enhanced active state for touch */
+  .selection-tooltip__button:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+
+  /* Better visual feedback on primary button touch */
+  .selection-tooltip__button--primary:active {
+    background-color: var(--tooltip-button-hover-light);
+  }
+
+  [data-theme='dark'] .selection-tooltip__button--primary:active,
+  .dark .selection-tooltip__button--primary:active {
+    background-color: var(--tooltip-button-hover-dark);
+  }
+
+  /* Remove hover states on touch devices (no hover capability) */
+  .selection-tooltip__button:hover {
+    background-color: inherit;
+  }
+
+  .selection-tooltip__button--primary:hover {
+    background-color: var(--tooltip-button-bg-light);
+  }
+
+  [data-theme='dark'] .selection-tooltip__button--primary:hover,
+  .dark .selection-tooltip__button--primary:hover {
+    background-color: var(--tooltip-button-bg-dark);
   }
 }
 

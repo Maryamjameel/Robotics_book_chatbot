@@ -704,7 +704,7 @@ Implement selected-text feature with ChatKit:
 
 2. Create SelectionTooltip: frontend/src/components/SelectionTooltip/SelectionTooltip.tsx
    - Position at selection coordinates
-   - Show "💬 Ask ChatKit about this" button
+   - Show "💬 Ask about this" button
    - Dismiss button
    - On click: trigger ChatKit with selected text context
 
