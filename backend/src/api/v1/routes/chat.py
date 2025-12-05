@@ -76,32 +76,53 @@ async def ask_question(request: ChatRequest, http_request: Request) -> ChatRespo
             },
         )
 
-        # TODO: In Phase 4, integrate with Qdrant vector search
-        # For now, use mock chunks for demonstration
-        mock_chunks = [
-            {
-                "score": 0.89,
-                "payload": {
-                    "chapter_id": "ch03",
-                    "chapter_title": "Kinematics",
-                    "section_number": 1,
-                    "section_title": "Forward Kinematics",
-                    "text": "Forward kinematics is the process of calculating the end-effector position and orientation given the joint angles of a robotic arm.",
-                },
-            }
-        ]
+        # Phase 4: Real vector search integration
+        from src.services.embedding_service import embed_question
+        from src.services.qdrant_service import search_chunks
 
-        # Call RAG service
         search_start = time.time()
+
+        # Step 1: Generate question embedding
+        question_embedding = await embed_question(request.question)
+
+        # Step 2: Search for relevant chunks in Qdrant
+        retrieved_chunks = search_chunks(
+            question_embedding=question_embedding,
+            top_k=5,
+            relevance_threshold=0.7,
+        )
+
         search_latency_ms = (time.time() - search_start) * 1000
 
+        # Step 3: Handle no results case
+        if not retrieved_chunks:
+            logger.info(
+                "No relevant content found",
+                extra={
+                    "operation": "chat_ask",
+                    "request_id": request_id,
+                    "status": "no_results",
+                },
+            )
+            return ChatResponse(
+                answer="No relevant content found in the robotics textbook about your query. Please try rephrasing your question.",
+                sources=[],
+                metadata=RAGMetadata(
+                    confidence_score=0.0,
+                    search_latency_ms=search_latency_ms,
+                    generation_latency_ms=0.0,
+                    total_latency_ms=search_latency_ms,
+                ),
+            )
+
+        # Step 4: Call RAG service to generate answer from chunks
         response = await rag_service.answer_question(
             question=request.question,
-            retrieved_chunks=mock_chunks,
+            retrieved_chunks=retrieved_chunks,
             request_id=request_id,
         )
 
-        # Update search latency in metadata
+        # Update search latency in response metadata
         response.metadata.search_latency_ms = search_latency_ms
         total_latency_ms = (time.time() - pipeline_start) * 1000
         response.metadata.total_latency_ms = total_latency_ms

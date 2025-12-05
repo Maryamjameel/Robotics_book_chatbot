@@ -1,5 +1,6 @@
 """Embedding generation service using OpenAI API."""
 
+import asyncio
 import time
 from typing import List
 
@@ -134,3 +135,74 @@ def embed_batch(texts: List[str], chunk_ids: List[str], metadata_list: List[dict
                 )
 
     raise RuntimeError(f"Failed to generate embeddings after {config.max_retries} attempts: {last_error}")
+
+
+async def embed_question(question: str) -> List[float]:
+    """Generate embedding for a single question (async wrapper).
+
+    Args:
+        question: Question text to embed
+
+    Returns:
+        1536-dimensional embedding vector
+
+    Raises:
+        RuntimeError: If embedding fails
+    """
+    try:
+        loop = asyncio.get_event_loop()
+        embedding = await asyncio.wait_for(
+            loop.run_in_executor(None, _embed_question_sync, question),
+            timeout=5.0,
+        )
+
+        logger.info(
+            "Question embedding generated",
+            extra={
+                "operation": "embed_question",
+                "question_length": len(question),
+                "embedding_dim": len(embedding),
+                "status": "success",
+            },
+        )
+
+        return embedding
+
+    except asyncio.TimeoutError as e:
+        logger.error(
+            "Embedding request timed out",
+            extra={
+                "operation": "embed_question",
+                "error": "timeout",
+                "status": "failed",
+            },
+        )
+        raise RuntimeError("Embedding service timeout") from e
+
+    except Exception as e:
+        logger.error(
+            f"Embedding failed: {str(e)}",
+            extra={
+                "operation": "embed_question",
+                "error": str(e),
+                "status": "failed",
+            },
+        )
+        raise RuntimeError(f"Embedding failed: {str(e)}") from e
+
+
+def _embed_question_sync(question: str) -> List[float]:
+    """Synchronous embedding implementation for a single question.
+
+    Args:
+        question: Text to embed
+
+    Returns:
+        Embedding vector
+    """
+    client = OpenAI(api_key=config.openai_api_key)
+    response = client.embeddings.create(
+        input=question,
+        model=config.embedding_model,
+    )
+    return response.data[0].embedding

@@ -330,3 +330,92 @@ def verify_insertion(
             exc_info=True,
         )
         raise RuntimeError(f"Failed to verify collection {coll_name}: {e}")
+
+
+def search_chunks(
+    question_embedding: List[float],
+    collection_name: Optional[str] = None,
+    top_k: int = 5,
+    relevance_threshold: float = 0.7,
+) -> List[Dict[str, Any]]:
+    """Search for relevant chunks using vector similarity.
+
+    Args:
+        question_embedding: 1536-dimensional embedding vector
+        collection_name: Name of the collection (uses config default if None)
+        top_k: Number of top results to return (default 5)
+        relevance_threshold: Minimum cosine similarity score (default 0.7)
+
+    Returns:
+        List of dicts with payload and relevance score
+
+    Raises:
+        RuntimeError: If search fails
+    """
+    coll_name = collection_name or config.collection_name
+
+    try:
+        client = QdrantClient(
+            url=config.qdrant_url,
+            api_key=config.qdrant_api_key,
+            timeout=5.0,
+        )
+
+        logger.info(
+            "Starting vector search",
+            extra={
+                "operation": "search_chunks",
+                "collection": coll_name,
+                "top_k": top_k,
+                "threshold": relevance_threshold,
+                "status": "in_progress",
+            },
+        )
+
+        # Perform search
+        search_results = client.search(
+            collection_name=coll_name,
+            query_vector=question_embedding,
+            query_filter=None,
+            limit=top_k * 2,  # Get extra results to filter by threshold
+            with_payload=True,
+        )
+
+        # Filter by relevance threshold
+        filtered_results = []
+        for result in search_results:
+            if result.score >= relevance_threshold:
+                filtered_results.append(
+                    {
+                        "score": result.score,
+                        "payload": dict(result.payload) if result.payload else {},
+                    }
+                )
+
+        # Return top_k after filtering
+        final_results = filtered_results[:top_k]
+
+        logger.info(
+            "Vector search completed",
+            extra={
+                "operation": "search_chunks",
+                "collection": coll_name,
+                "results_count": len(final_results),
+                "status": "success",
+            },
+        )
+
+        return final_results
+
+    except Exception as e:
+        logger.error(
+            f"Search failed: {str(e)}",
+            extra={
+                "operation": "search_chunks",
+                "collection": coll_name,
+                "error": str(e),
+                "status": "failed",
+            },
+            exc_info=True,
+        )
+        raise RuntimeError(f"Vector search failed: {str(e)}") from e
