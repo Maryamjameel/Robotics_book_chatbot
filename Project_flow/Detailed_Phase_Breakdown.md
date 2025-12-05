@@ -617,15 +617,15 @@ Integrate ChatKit SDK into Docusaurus for AI-powered chatbot with RAG backend, m
 **Prompt 1: Integrate ChatKit SDK**
 ```
 Integrate ChatKit chatbot SDK into Docusaurus:
+use context7 for latest docs
 
-1. Install ChatKit:
-   npm install @chatkit/react @chatkit/core
+1. Install ChatKit SDK
 
 2. Create ChatKit configuration: frontend/src/config/chatkit.ts
    - API endpoint: http://localhost:8000/api/v1/chat/ask
    - Default system message for RAG context
    - API key handling (if needed)
-   - Model: gpt-4 (or use Gemini via FastAPI proxy)
+   - Model: Use Gemini (free) via FastAPI proxy
 
 3. Integrate in Root component: frontend/src/theme/Root.tsx
    - Wrap app with ChatKitProvider
@@ -645,7 +645,6 @@ Integrate ChatKit chatbot SDK into Docusaurus:
 
 Requirements:
 - ChatKit sends/receives messages via FastAPI backend
-- Message history saved to database
 - Support selected-text context passing
 
 Use frontend-integration agent and code-reviewer.

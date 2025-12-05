@@ -402,6 +402,64 @@ backend/
 4. **Update exports**: Add to `src/services/__init__.py`
 5. **Document**: Update this README
 
+## RAG API Endpoint
+
+The backend includes a FastAPI REST endpoint for answering questions about robotics textbook content using the RAG pipeline.
+
+### POST /api/v1/chat/ask
+
+Ask a natural language question about robotics textbook content and receive an answer with citations.
+
+**Request**:
+```json
+{
+  "question": "What is forward kinematics?",
+  "filters": {}
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "answer": "Forward kinematics is the process of calculating the end-effector position and orientation given joint angles... Source: Chapter 3, Section 3.1 - Forward Kinematics",
+  "sources": [
+    {
+      "chapter_id": "ch03",
+      "chapter_title": "Kinematics",
+      "section_number": 1,
+      "section_title": "Forward Kinematics",
+      "excerpt": "Forward kinematics is...",
+      "relevance_score": 0.89
+    }
+  ],
+  "metadata": {
+    "confidence_score": 0.92,
+    "search_latency_ms": 125,
+    "generation_latency_ms": 1450,
+    "total_latency_ms": 1575
+  }
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid question (empty, >2000 chars)
+- `429 Too Many Requests`: Rate limit exceeded (5 req/sec max)
+- `503 Service Unavailable`: Qdrant or Gemini service unavailable
+
+**Configuration**:
+```env
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+**Running the API**:
+```bash
+poetry install
+python -m uvicorn src.main:app --reload
+```
+
+Visit `http://localhost:8000/docs` for interactive API documentation.
+
 ## Contributing
 
 All pull requests must:
