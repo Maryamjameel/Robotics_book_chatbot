@@ -1,0 +1,267 @@
+openapi: 3.0.0
+info:
+  title: RAG Chatbot API
+  description: REST API for answering questions about robotics textbook content using RAG
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.example.com
+    description: Production
+
+paths:
+  /api/v1/chat/ask:
+    post:
+      summary: Ask a question about robotics textbook content
+      description: |
+        Submit a question about robotics and receive an AI-generated answer with source citations
+        from the textbook. The answer is grounded in retrieved chunks from the vector database.
+      operationId: askQuestion
+      tags:
+        - Chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              simple:
+                summary: Basic question about kinematics
+                value:
+                  question: "What is forward kinematics?"
+              withFilters:
+                summary: Question with chapter filter
+                value:
+                  question: "Explain the Denavit-Hartenberg convention"
+                  filters:
+                    chapter_id: "ch03"
+      responses:
+        '200':
+          description: Successful response with answer and sources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                success:
+                  summary: Successful answer with citations
+                  value:
+                    answer: |
+                      Forward kinematics is the process of calculating the end-effector position and orientation
+                      given the joint angles and link lengths of a robot. This is fundamental to robotic manipulation
+                      and motion planning.
+
+                      Source: Chapter 3, Section 3.1 - Forward Kinematics
+                    sources:
+                      - chapter_id: "ch03"
+                        chapter_title: "Kinematics"
+                        section_number: 1
+                        section_title: "Forward Kinematics"
+                        excerpt: "Forward kinematics is the process of calculating the end-effector position and orientation given the joint angles and link lengths of a robot."
+                        relevance_score: 0.89
+                      - chapter_id: "ch03"
+                        chapter_title: "Kinematics"
+                        section_number: 2
+                        section_title: "Denavit-Hartenberg Convention"
+                        excerpt: "The Denavit-Hartenberg (DH) convention is a systematic way to assign coordinate frames to robot links."
+                        relevance_score: 0.76
+                    metadata:
+                      question_embedding_time_ms: 45
+                      vector_search_time_ms: 120
+                      llm_generation_time_ms: 1200
+                      total_time_ms: 1365
+                      confidence_score: 0.92
+                      avg_relevance_score: 0.825
+                      num_sources_retrieved: 2
+        '400':
+          description: Bad request - invalid question format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emptyQuestion:
+                  value:
+                    detail: "Question must be between 1 and 2000 characters"
+                tooLong:
+                  value:
+                    detail: "Question exceeds 2000 character limit"
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rateLimit:
+                  value:
+                    detail: "Rate limit exceeded. Maximum 5 requests per second. Please retry after a moment."
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds to wait before retrying
+        '503':
+          description: Service unavailable - Qdrant or Gemini offline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                qdrantDown:
+                  value:
+                    detail: "Vector search temporarily unavailable. Please try again in a moment."
+                geminIDown:
+                  value:
+                    detail: "LLM service temporarily unavailable. Please try again in a moment."
+
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - question
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: "User's question about robotics content"
+          example: "What is forward kinematics?"
+        filters:
+          type: object
+          description: "Optional filters to refine vector search results"
+          properties:
+            chapter_id:
+              type: string
+              description: "Filter results to specific chapter (e.g., 'ch03')"
+            section_number:
+              type: integer
+              description: "Filter results to specific section within chapter"
+          example:
+            chapter_id: "ch03"
+
+    Source:
+      type: object
+      required:
+        - chapter_id
+        - chapter_title
+        - section_number
+        - section_title
+        - excerpt
+        - relevance_score
+      properties:
+        chapter_id:
+          type: string
+          description: "Unique chapter identifier"
+          example: "ch03"
+        chapter_title:
+          type: string
+          description: "Title of the chapter"
+          example: "Kinematics"
+        section_number:
+          type: integer
+          description: "Sequential section number within chapter"
+          example: 1
+        section_title:
+          type: string
+          description: "Title of the section"
+          example: "Forward Kinematics"
+        excerpt:
+          type: string
+          description: "First 200 characters of the section content"
+          example: "Forward kinematics is the process of calculating the end-effector position and orientation given the joint angles and link lengths of a robot."
+        relevance_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: "Cosine similarity score (0.0 to 1.0) indicating relevance to question"
+          example: 0.89
+
+    RAGMetadata:
+      type: object
+      required:
+        - question_embedding_time_ms
+        - vector_search_time_ms
+        - llm_generation_time_ms
+        - total_time_ms
+        - confidence_score
+        - avg_relevance_score
+        - num_sources_retrieved
+      properties:
+        question_embedding_time_ms:
+          type: number
+          format: float
+          description: "Time to embed the user question"
+          example: 45
+        vector_search_time_ms:
+          type: number
+          format: float
+          description: "Time to search vector database"
+          example: 120
+        llm_generation_time_ms:
+          type: number
+          format: float
+          description: "Time for LLM to generate answer"
+          example: 1200
+        total_time_ms:
+          type: number
+          format: float
+          description: "Total end-to-end processing time"
+          example: 1365
+        confidence_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: "Confidence in the answer (0.0 to 1.0)"
+          example: 0.92
+        avg_relevance_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: "Average relevance score of retrieved sources"
+          example: 0.825
+        num_sources_retrieved:
+          type: integer
+          description: "Number of sources used for answer generation"
+          example: 2
+
+    ChatResponse:
+      type: object
+      required:
+        - answer
+        - sources
+        - metadata
+      properties:
+        answer:
+          type: string
+          description: "AI-generated answer grounded in retrieved sources"
+          example: "Forward kinematics is the process of calculating the end-effector position and orientation given the joint angles and link lengths of a robot...\n\nSource: Chapter 3, Section 3.1 - Forward Kinematics"
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+          description: "List of textbook sections that informed the answer"
+          minItems: 0
+          maxItems: 10
+        metadata:
+          $ref: '#/components/schemas/RAGMetadata'
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: "Human-readable error message"
+          example: "Question must be between 1 and 2000 characters"
+
+tags:
+  - name: Chat
+    description: Question answering endpoint powered by RAG
