@@ -57,6 +57,36 @@ export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
   }, [session?.messages.length, scrollToBottom]);
 
   /**
+   * Listen for selection:ask events from SelectionTooltip
+   * Pre-fill input with selected text when user clicks "Ask about this"
+   */
+  useEffect(() => {
+    const handleSelectionAsk = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const selectedText = customEvent.detail?.selectedText;
+
+      if (selectedText && typeof selectedText === 'string') {
+        // Pre-fill input and selected text state
+        setInput(selectedText);
+        setSelectedText(selectedText);
+
+        // Focus the input field for immediate typing/submission
+        const inputElement = document.querySelector('.chatkit-input') as HTMLTextAreaElement;
+        if (inputElement) {
+          inputElement.focus();
+          // Move cursor to end
+          inputElement.selectionStart = inputElement.selectionEnd = inputElement.value.length;
+        }
+      }
+    };
+
+    document.addEventListener('selection:ask', handleSelectionAsk);
+    return () => {
+      document.removeEventListener('selection:ask', handleSelectionAsk);
+    };
+  }, []);
+
+  /**
    * Validate and send question to backend
    */
   const handleSendQuestion = useCallback(async () => {

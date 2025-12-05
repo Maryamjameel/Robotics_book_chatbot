@@ -128,43 +128,43 @@
 
 **Parallelizable Tasks**:
 
-- [ ] T016 [P] [US1] Implement SelectionTooltip component at `frontend/src/components/SelectionTooltip/SelectionTooltip.tsx`:
+- [x] T016 [P] [US1] Implement SelectionTooltip component at `frontend/src/components/SelectionTooltip/SelectionTooltip.tsx`:
   - Display at (x, y) coordinates
   - Show "💬 Ask about this" button and dismiss (×) button
   - Accept onAsk and onDismiss callbacks
   - Show truncated preview of selected text (max 50 chars)
   - Accept isVisible prop to control visibility
 
-- [ ] T017 [P] [US1] Create SelectionTooltip styles at `frontend/src/components/SelectionTooltip/SelectionTooltip.css`:
+- [x] T017 [P] [US1] Create SelectionTooltip styles at `frontend/src/components/SelectionTooltip/SelectionTooltip.css`:
   - Position absolute on viewport (z-index 1000)
   - Min width 200px, max width 350px
   - Button styling with 48px minimum tap target
   - Dark mode support with CSS variables
   - Mobile responsive (max 90% viewport width on narrow screens)
 
-- [ ] T018 [P] [US1] Implement SelectionTooltip accessibility features:
+- [x] T018 [P] [US1] Implement SelectionTooltip accessibility features:
   - Keyboard focus management (Tab to cycle through buttons)
   - ARIA labels for buttons
   - Color contrast ratio ≥4.5:1 per WCAG AA
   - Dismiss on Escape key
 
-- [ ] T019 [US1] Integrate SelectionTooltip into Root.tsx at `frontend/src/theme/Root.tsx`:
+- [x] T019 [US1] Integrate SelectionTooltip into Root.tsx at `frontend/src/theme/Root.tsx`:
   - Import useTextSelection and useSelectionTooltip hooks
   - Render SelectionTooltip component at root level
   - Pass tooltip state and handlers to SelectionTooltip
 
-- [ ] T020 [US1] Enhance ChatKitWidget to accept pre-filled selected text at `frontend/src/components/ChatKit/ChatKitWidget.tsx`:
+- [x] T020 [US1] Enhance ChatKitWidget to accept pre-filled selected text at `frontend/src/components/ChatKit/ChatKitWidget.tsx`:
   - Accept `selectedText` prop (optional)
   - If selectedText provided, pre-fill input field with it
   - Handle prefilling without triggering auto-send
   - Preserve selectedText in request payload to backend
 
-- [ ] T021 [US1] Integrate selection tooltip with ChatKit in Root.tsx:
+- [x] T021 [US1] Integrate selection tooltip with ChatKit in Root.tsx:
   - When "Ask about this" button clicked, call ChatKit's setSelectedText method
   - Open ChatKit widget and focus input field
   - Tooltip dismisses after button click
 
-- [ ] T022 [US1] Implement selection tooltip dismissal logic in `useSelectionTooltip` hook:
+- [x] T022 [US1] Implement selection tooltip dismissal logic in `useSelectionTooltip` hook:
   - Dismiss when Escape key pressed (add keydown listener)
   - Dismiss when clicking outside tooltip bounds
   - Dismiss when user scrolls
