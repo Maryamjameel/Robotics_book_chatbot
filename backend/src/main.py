@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.config import config, logger
+from src.services.health_service import check_all_dependencies, check_gemini_health, check_qdrant_health
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -72,11 +73,40 @@ async def http_exception_handler(request: Any, exc: HTTPException) -> JSONRespon
     )
 
 
-# Health check endpoint
+# Health check endpoints
 @app.get("/health")
 async def health() -> Dict[str, str]:
-    """Health check endpoint."""
+    """Basic health check endpoint."""
     return {"status": "ok"}
+
+
+@app.get("/health/full")
+async def health_full() -> Dict[str, Any]:
+    """
+    Full health check including dependencies.
+
+    Returns:
+        {
+            "status": "healthy|degraded|unhealthy",
+            "components": {
+                "qdrant": {"status": "...", "point_count": ...},
+                "gemini": {"status": "...", "model_name": "..."}
+            }
+        }
+    """
+    return await check_all_dependencies()
+
+
+@app.get("/health/qdrant")
+async def health_qdrant() -> Dict[str, Any]:
+    """Check Qdrant vector database connectivity and collection status."""
+    return await check_qdrant_health()
+
+
+@app.get("/health/gemini")
+async def health_gemini() -> Dict[str, Any]:
+    """Check Google Gemini API connectivity and model availability."""
+    return await check_gemini_health()
 
 
 # Startup event

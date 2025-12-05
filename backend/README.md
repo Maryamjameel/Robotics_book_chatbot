@@ -460,6 +460,160 @@ python -m uvicorn src.main:app --reload
 
 Visit `http://localhost:8000/docs` for interactive API documentation.
 
+## Health Check Endpoints
+
+Monitor the health and status of RAG API dependencies:
+
+### GET /health
+
+Simple liveness check. Returns immediately if server is running.
+
+**Response** (200 OK):
+```json
+{
+  "status": "ok"
+}
+```
+
+### GET /health/full
+
+Complete dependency health check for Qdrant and Gemini API.
+
+**Response** (200 OK):
+```json
+{
+  "status": "healthy",
+  "components": {
+    "qdrant": {
+      "status": "healthy",
+      "collection_name": "robotics_chapters",
+      "point_count": 1523,
+      "error": null
+    },
+    "gemini": {
+      "status": "healthy",
+      "model_name": "gemini-1.5-flash",
+      "error": null
+    }
+  }
+}
+```
+
+**Status Values**:
+- `healthy`: All dependencies operational
+- `degraded`: One or more dependencies unavailable
+- `unhealthy`: Critical failures detected
+
+### GET /health/qdrant
+
+Check Qdrant vector database connectivity and collection status.
+
+**Response** (200 OK):
+```json
+{
+  "status": "healthy",
+  "collection_name": "robotics_chapters",
+  "point_count": 1523,
+  "error": null
+}
+```
+
+**Troubleshooting**:
+- Verify `QDRANT_URL` and `QDRANT_API_KEY` in `.env`
+- Ensure Qdrant instance is accessible from your network
+- Check that collection has been initialized with embeddings
+
+### GET /health/gemini
+
+Check Google Gemini API connectivity and model availability.
+
+**Response** (200 OK):
+```json
+{
+  "status": "healthy",
+  "model_name": "gemini-1.5-flash",
+  "error": null
+}
+```
+
+**Troubleshooting**:
+- Verify `GEMINI_API_KEY` in `.env` is valid
+- Ensure API key has access to the configured model
+- Check that your account has required API quota
+
+## Deployment
+
+### Environment Setup
+
+1. Create `.env` file from template:
+```bash
+cp .env.example .env
+```
+
+2. Configure required variables:
+```env
+# OpenAI Embeddings
+OPENAI_API_KEY=sk-...
+EMBEDDING_MODEL=text-embedding-3-small
+
+# Google Gemini
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-1.5-flash
+
+# Qdrant Vector Database
+QDRANT_URL=https://your-qdrant-instance.com
+QDRANT_API_KEY=your-qdrant-api-key
+COLLECTION_NAME=robotics_chapters
+
+# Logging
+LOG_LEVEL=INFO
+LOG_TO_CONSOLE=true
+```
+
+### Running the API
+
+**Development**:
+```bash
+poetry install
+python -m uvicorn src.main:app --reload
+```
+
+**Production**:
+```bash
+poetry install --no-dev
+python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### Verification Checklist
+
+Before deploying to production:
+
+- [ ] All environment variables configured
+- [ ] OpenAI API key validated with quota
+- [ ] Gemini API key validated with quota
+- [ ] Qdrant instance accessible and collection initialized
+- [ ] Run `/health/full` and verify all components show "healthy"
+- [ ] Test `/api/v1/chat/ask` with sample questions
+- [ ] Review logs for any ERROR or WARNING messages
+- [ ] Configure monitoring/alerting for `/health/full` endpoint
+- [ ] Set up log aggregation for structured JSON logs
+
+### Monitoring
+
+Monitor the health of your deployment:
+
+```bash
+# Check full system health
+curl http://localhost:8000/health/full
+
+# Monitor specific dependencies
+curl http://localhost:8000/health/qdrant
+curl http://localhost:8000/health/gemini
+
+# Watch logs in real-time
+tail -f logs/pipeline.log | grep -E "ERROR|WARNING"
+```
+
 ## Contributing
 
 All pull requests must:
