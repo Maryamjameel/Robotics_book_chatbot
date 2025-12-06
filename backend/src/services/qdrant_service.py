@@ -1,13 +1,18 @@
 """Qdrant vector storage service for inserting and retrieving embeddings."""
 
 import random
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from ..config import config, logger
 from ..models import InsertionResult, TextEmbedding, VerificationResult
+from .utils.chapter_filter import (
+    ChapterContextFilter,
+    ChapterFilterEngine,
+    SearchResult,
+)
 
 
 def initialize_collection(collection_name: Optional[str] = None) -> bool:
@@ -337,17 +342,23 @@ def search_chunks(
     collection_name: Optional[str] = None,
     top_k: int = 5,
     relevance_threshold: float = 0.7,
-) -> List[Dict[str, Any]]:
-    """Search for relevant chunks using vector similarity.
+    chapter_context: Optional[Dict[str, str]] = None,
+    selected_text_terms: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Search for relevant chunks using vector similarity with optional chapter filtering.
+
+    Performs Qdrant vector search and optionally filters/re-ranks results by chapter context.
 
     Args:
         question_embedding: 1536-dimensional embedding vector
         collection_name: Name of the collection (uses config default if None)
         top_k: Number of top results to return (default 5)
         relevance_threshold: Minimum cosine similarity score (default 0.7)
+        chapter_context: Optional dict with 'chapter_id' and 'chapter_title' for filtering
+        selected_text_terms: Optional list of terms from selected text for TF-IDF boosting
 
     Returns:
-        List of dicts with payload and relevance score
+        Dict with 'results' (list of search results) and 'metadata' (filtering stats)
 
     Raises:
         RuntimeError: If search fails
@@ -368,44 +379,98 @@ def search_chunks(
                 "collection": coll_name,
                 "top_k": top_k,
                 "threshold": relevance_threshold,
+                "chapter_filtered": chapter_context is not None,
                 "status": "in_progress",
             },
         )
 
-        # Perform search
+        # Perform vector search
         search_results = client.search(
             collection_name=coll_name,
             query_vector=question_embedding,
             query_filter=None,
-            limit=top_k * 2,  # Get extra results to filter by threshold
+            limit=top_k * 3,  # Get extra results for chapter filtering and threshold
             with_payload=True,
         )
 
-        # Filter by relevance threshold
-        filtered_results = []
+        # Convert Qdrant results to SearchResult objects and filter by threshold
+        search_result_objects = []
         for result in search_results:
             if result.score >= relevance_threshold:
-                filtered_results.append(
-                    {
-                        "score": result.score,
-                        "payload": dict(result.payload) if result.payload else {},
-                    }
+                payload = dict(result.payload) if result.payload else {}
+                search_result_objects.append(
+                    SearchResult(
+                        chapter_id=payload.get("chapter_id", "unknown"),
+                        section_number=payload.get("section_number", 0),
+                        section_title=payload.get("section_title", ""),
+                        excerpt=payload.get("excerpt", ""),
+                        relevance_score=result.score,
+                        id=str(result.id),
+                    )
+                )
+
+        # Apply chapter filtering and re-ranking
+        filter_engine = ChapterFilterEngine()
+        filtered_results = search_result_objects
+
+        # Apply chapter context filtering if provided
+        if chapter_context:
+            chapter_filter = ChapterContextFilter(
+                chapter_id=chapter_context.get("chapter_id", ""),
+                chapter_title=chapter_context.get("chapter_title"),
+            )
+            filtered_results = filter_engine.filter_results(search_result_objects, chapter_filter)
+
+            # Apply TF-IDF boosting if selected text terms provided
+            if selected_text_terms:
+                filtered_results = filter_engine.apply_tf_idf_boost(
+                    filtered_results, selected_text_terms=selected_text_terms
                 )
 
         # Return top_k after filtering
         final_results = filtered_results[:top_k]
+
+        # Convert FilteredResult back to dict format for API response
+        result_dicts = [
+            {
+                "id": result.id,
+                "chapter_id": result.chapter_id,
+                "section_number": result.section_number,
+                "section_title": result.section_title,
+                "excerpt": result.excerpt,
+                "relevance_score": result.final_relevance if hasattr(result, 'final_relevance') else result.relevance_score,
+            }
+            for result in final_results
+        ]
+
+        # Get filtering metadata
+        filtering_metadata = {
+            "chapter_filtered": chapter_context is not None,
+            "chapter_id": chapter_context.get("chapter_id") if chapter_context else None,
+            "boost_applied": any(
+                getattr(r, 'boost_factor', 1.0) != 1.0 for r in filtered_results
+            ),
+            "filtered_count": sum(
+                1 for r in filtered_results if getattr(r, 'matched_chapter', False)
+            ),
+        }
 
         logger.info(
             "Vector search completed",
             extra={
                 "operation": "search_chunks",
                 "collection": coll_name,
-                "results_count": len(final_results),
+                "results_count": len(result_dicts),
+                "chapter_filtered": filtering_metadata["chapter_filtered"],
+                "boost_applied": filtering_metadata["boost_applied"],
                 "status": "success",
             },
         )
 
-        return final_results
+        return {
+            "results": result_dicts,
+            "metadata": filtering_metadata,
+        }
 
     except Exception as e:
         logger.error(

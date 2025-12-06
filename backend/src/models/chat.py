@@ -27,6 +27,11 @@ class ChatRequest(BaseModel):
         description="Optional filters for vector search (e.g., chapter_id, section_number)",
         example={"chapter_id": "ch03"},
     )
+    chapter_context: Optional[dict] = Field(
+        default=None,
+        description="Optional chapter context for filtering search results by current chapter (FR-007)",
+        example={"chapter_id": "ch03", "chapter_title": "Kinematics"},
+    )
 
     class Config:
         """Pydantic config."""
@@ -112,6 +117,16 @@ class RAGMetadata(BaseModel):
         description="Key terms extracted from selected text and used for TF-IDF boosting",
         example=["forward", "kinematics"],
     )
+    chapter_filtered: Optional[bool] = Field(
+        default=False,
+        description="Whether search results were filtered/prioritized by chapter context",
+        example=False,
+    )
+    chapter_id: Optional[str] = Field(
+        default=None,
+        description="Chapter ID used for filtering (if chapter_filtered=true)",
+        example="ch03",
+    )
 
 
 class ChatResponse(BaseModel):
@@ -126,8 +141,15 @@ class ChatResponse(BaseModel):
         default_factory=list,
         description="List of sources retrieved from vector search",
     )
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score for the answer (0-1, higher is more confident)",
+        example=0.92,
+    )
     metadata: RAGMetadata = Field(
-        ..., description="Execution metadata including confidence and latency"
+        ..., description="Execution metadata including latency and boosting details"
     )
 
     class Config:
@@ -147,6 +169,7 @@ class ChatResponse(BaseModel):
                             "relevance_score": 0.89,
                         }
                     ],
+                    "confidence": 0.92,
                     "metadata": {
                         "confidence_score": 0.92,
                         "search_latency_ms": 125.0,
@@ -169,6 +192,7 @@ class ChatResponse(BaseModel):
                             "relevance_score": 0.95,
                         }
                     ],
+                    "confidence": 0.96,
                     "metadata": {
                         "confidence_score": 0.96,
                         "search_latency_ms": 115.0,
