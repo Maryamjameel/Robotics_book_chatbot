@@ -7,15 +7,27 @@
  */
 
 import { RAGRequest, RAGResponse } from '../types/chatkit.types';
+import { apiConfig } from '../../../config/api';
 import { chatKitConfig } from '../../config/chatkit.config';
 
 /**
  * Send a question to the RAG backend and receive an answer
  * Implements 30-second timeout per FR-010 specification
+ * Supports optional chapter context for filtering and re-ranking results
  *
- * @param request - RAGRequest with question, optional context
+ * @param request - RAGRequest with question, optional context:
+ *   - question: User question (required, 1-2000 chars)
+ *   - selectedText: Optional selected text from page (for TF-IDF boosting)
+ *   - pageContext: Optional page metadata (URL, pathname, confidence)
+ *   - chapter_context: Optional chapter context for filtering search results
+ *     - chapter_id: Chapter identifier (e.g., 'ch03')
+ *     - chapter_title: Chapter title (e.g., 'Kinematics')
+ *   - sessionId: Optional session ID for conversation tracking
  * @param timeoutMs - Request timeout in milliseconds (default: 30000)
- * @returns RAGResponse with answer, sources, confidence, metadata
+ * @returns RAGResponse with answer, sources, confidence, metadata including:
+ *   - metadata.chapter_filtered: Whether results were filtered by chapter
+ *   - metadata.chapter_id: Chapter ID used for filtering (if applicable)
+ *   - metadata.boost_factor: TF-IDF boost factor applied (1.0 = no boost)
  * @throws Error on network failure, timeout, or invalid response
  */
 export async function sendQuestion(
@@ -35,8 +47,10 @@ export async function sendQuestion(
       throw new Error('Question exceeds maximum length of 2000 characters');
     }
 
-    // Send POST request to backend
-    const response = await fetch(chatKitConfig.apiEndpoint, {
+    // Send POST request to backend using configured API endpoint
+    // Uses apiConfig for environment-based endpoint selection (dev/prod/staging)
+    const chatEndpoint = `${apiConfig.baseURL}/v1/chat/ask`;
+    const response = await fetch(chatEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -132,7 +146,7 @@ export async function healthCheck(): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-    const response = await fetch(`${chatKitConfig.apiEndpoint}/health`, {
+    const response = await fetch(getHealthUrl(), {
       method: 'GET',
       signal: controller.signal,
     });

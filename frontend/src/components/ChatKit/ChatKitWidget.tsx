@@ -10,6 +10,8 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { ChatMessage } from './types/chatkit.types';
 import { useChatHistory } from './hooks/useChatHistory';
 import { usePageContext } from './hooks/usePageContext';
+import { useChapterContext } from './hooks/useChapterContext';
+import { useThemeContext } from './hooks/useThemeContext';
 import { useRAGAPI } from './hooks/useRAGAPI';
 import { chatKitConfig, constraints } from '../config/chatkit.config';
 import './styles/chatkit.css';
@@ -45,6 +47,10 @@ export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
   // Hooks
   const { session, addMessage, clearHistory } = useChatHistory();
   const pageContext = usePageContext();
+  const chapterContext = useChapterContext();
+  // Theme hook detects Docusaurus theme changes and provides CSS variable fallbacks
+  // Styling is applied via CSS variables in chatkit.css (--chatkit-primary, --chatkit-bg, etc.)
+  const theme = useThemeContext();
   const { sendQuestion, isLoading, error: apiError } = useRAGAPI();
 
   // Auto-scroll to latest message
@@ -132,11 +138,12 @@ export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
     setInput('');
     setSelectedText(null);
 
-    // Send to backend
+    // Send to backend with chapter context
     const response = await sendQuestion(
       trimmedQuestion,
       selectedText || undefined,
-      pageContext || undefined
+      pageContext || undefined,
+      chapterContext || undefined
     );
 
     // Handle response
@@ -184,6 +191,39 @@ export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
   );
 
   /**
+   * Render chapter context badge
+   * Displays current chapter name and extraction confidence
+   */
+  const renderChapterBadge = () => {
+    if (!chapterContext) {
+      return null;
+    }
+
+    // Map confidence to color and label
+    const confidenceStyles: Record<'high' | 'medium' | 'low', { color: string; icon: string }> = {
+      high: { color: '#10b981', icon: '✓' },      // Green
+      medium: { color: '#f59e0b', icon: '◐' },    // Amber
+      low: { color: '#ef4444', icon: '?' },       // Red
+    };
+
+    const style = confidenceStyles[chapterContext.confidence];
+
+    return (
+      <div className="chatkit-chapter-badge" style={{ borderLeftColor: style.color }}>
+        <span className="chapter-badge-icon" style={{ color: style.color }}>
+          {style.icon}
+        </span>
+        <span className="chapter-badge-text">
+          Chapter: <strong>{chapterContext.chapterTitle}</strong>
+        </span>
+        <span className="chapter-badge-confidence" style={{ color: style.color }}>
+          ({chapterContext.confidence})
+        </span>
+      </div>
+    );
+  };
+
+  /**
    * Render a single chat message
    */
   const renderMessage = (msg: ChatMessage) => {
@@ -207,17 +247,15 @@ export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
           <div className="message-sources">
             <div className="sources-label">Sources:</div>
             <div className="sources-list">
-              {msg.sources.slice(0, constraints.maxSourcesPerResponse).map(source => (
-                <a
-                  key={source.id}
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              {msg.sources.slice(0, constraints.maxSourcesPerResponse).map((source, idx) => (
+                <div
+                  key={source.id || idx}
                   className="source-link"
-                  title={`${source.title} (${(source.similarity * 100).toFixed(0)}% match)`}
+                  title={`${source.chapter_title}, Section ${source.section_number} - ${source.section_title} (${(source.relevance_score * 100).toFixed(0)}% match)`}
                 >
-                  {source.title}
-                </a>
+                  {source.chapter_title}, Section {source.section_number}: {source.section_title}
+                  <span className="source-relevance"> ({(source.relevance_score * 100).toFixed(0)}%)</span>
+                </div>
               ))}
             </div>
           </div>
@@ -244,6 +282,9 @@ export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
 
   return (
     <div className={`chatkit-widget ${className || ''}`}>
+      {/* Chapter Context Badge */}
+      {renderChapterBadge()}
+
       {/* Messages Container */}
       <div className="chatkit-messages">
         {session.messages.length === 0 ? (

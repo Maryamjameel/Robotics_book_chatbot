@@ -8,29 +8,38 @@
 
 /* CSS Variables for theming */
 :root {
-  --chatkit-primary: #0066cc;
-  --chatkit-primary-hover: #0052a3;
-  --chatkit-bg: #ffffff;
-  --chatkit-bg-secondary: #f5f5f5;
-  --chatkit-text: #333333;
-  --chatkit-text-secondary: #666666;
-  --chatkit-border: #cccccc;
-  --chatkit-error: #cc0000;
-  --chatkit-success: #009900;
+  /* Docusaurus theme variable mappings with fallback colors */
+  /* Primary color - used for buttons, links, highlights */
+  --chatkit-primary: var(--ifm-color-primary, #0066cc);
+  --chatkit-primary-hover: var(--ifm-color-primary-dark, #0052a3);
+
+  /* Background and text colors */
+  --chatkit-bg: var(--ifm-background-color, #ffffff);
+  --chatkit-bg-secondary: var(--ifm-color-emphasis-100, #f5f5f5);
+  --chatkit-text: var(--ifm-font-color-base, #333333);
+  --chatkit-text-secondary: var(--ifm-color-emphasis-600, #666666);
+  --chatkit-border: var(--ifm-color-emphasis-200, #cccccc);
+
+  /* Status colors */
+  --chatkit-error: var(--ifm-color-danger, #cc0000);
+  --chatkit-success: var(--ifm-color-success, #009900);
+
+  /* Shadow and radius */
   --chatkit-shadow: rgba(0, 0, 0, 0.1);
   --chatkit-radius: 8px;
 }
 
-/* Dark mode theme */
+/* Dark mode theme - Docusaurus theme integration */
 [data-theme='dark'] {
-  --chatkit-primary: #3399ff;
-  --chatkit-primary-hover: #1a80ff;
-  --chatkit-bg: #1a1a1a;
-  --chatkit-bg-secondary: #2d2d2d;
-  --chatkit-text: #ffffff;
-  --chatkit-text-secondary: #cccccc;
-  --chatkit-border: #444444;
-  --chatkit-error: #ff6666;
+  /* Use Docusaurus dark mode variables, fallback to dark color palette */
+  --chatkit-primary: var(--ifm-color-primary, #3399ff);
+  --chatkit-primary-hover: var(--ifm-color-primary-dark, #1a80ff);
+  --chatkit-bg: var(--ifm-background-color, #1a1a1a);
+  --chatkit-bg-secondary: var(--ifm-color-emphasis-100, #2d2d2d);
+  --chatkit-text: var(--ifm-font-color-base, #ffffff);
+  --chatkit-text-secondary: var(--ifm-color-emphasis-600, #cccccc);
+  --chatkit-border: var(--ifm-color-emphasis-200, #444444);
+  --chatkit-error: var(--ifm-color-danger, #ff6666);
   --chatkit-shadow: rgba(0, 0, 0, 0.3);
 }
 
@@ -52,6 +61,8 @@
   color: var(--chatkit-text);
   z-index: 1000;
   overflow: hidden;
+  /* Smooth theme transitions - 300ms duration */
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
 }
 
 /* Messages Container */
@@ -296,6 +307,46 @@
   font-size: 16px;
 }
 
+/* Chapter Context Badge */
+.chatkit-chapter-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px;
+  border-left: 4px solid var(--chatkit-primary);
+  background: var(--chatkit-bg-secondary);
+  border-top: 1px solid var(--chatkit-border);
+  font-size: 13px;
+  color: var(--chatkit-text);
+  flex-wrap: wrap;
+}
+
+.chapter-badge-icon {
+  font-size: 16px;
+  font-weight: bold;
+  min-width: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.chapter-badge-text {
+  flex: 1;
+  min-width: 150px;
+  line-height: 1.4;
+}
+
+.chapter-badge-text strong {
+  font-weight: 600;
+  color: var(--chatkit-text);
+}
+
+.chapter-badge-confidence {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
 /* Character Count */
 .chatkit-char-count {
   font-size: 11px;
@@ -344,6 +395,15 @@
     max-width: 90%;
   }
 
+  .chatkit-chapter-badge {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .chapter-badge-text {
+    min-width: 120px;
+  }
+
   .chatkit-input {
     font-size: 16px; /* Prevents auto-zoom on iOS */
     min-height: 48px;
@@ -386,6 +446,11 @@
 
   .chatkit-message {
     border-width: 2px;
+  }
+
+  .chatkit-chapter-badge {
+    border-left-width: 6px;
+    border-top-width: 2px;
   }
 
   .chatkit-button,

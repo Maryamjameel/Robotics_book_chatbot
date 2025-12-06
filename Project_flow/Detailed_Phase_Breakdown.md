@@ -755,9 +755,107 @@ backend/app/
     └── qdrant_service.py        (updated)
 ```
 
+
+### **Phase 2.5: ChatKit-Docusaurus Integration**
+
+#### **📋 Description**
+Final integration: ensure ChatKit appears on all pages, passes chapter context, matches Docusaurus theme, works on deployed site.
+
+#### **🛠️ Tech Stack**
+- **Integration**: Docusaurus theme system + ChatKit Provider
+- **Context**: ChatKit hooks and context
+- **Styling**: CSS variables for theme matching
+
+#### **🤖 Agents & Skills**
+- **Agent**: `frontend-integration` - Final integration
+- **Agent**: `test-runner` - End-to-end testing
+- **Agent**: `code-reviewer` - Final code review
+
+#### **💬 Prompts to Use**
+
+**Prompt 1: Chapter Context Detection**
+```
+Implement chapter context awareness with ChatKit:
+
+Hook: frontend/src/hooks/useChapterContext.ts
+- Extract chapter_id from URL
+- Extract chapter_title from page h1
+- Return { chapterId, chapterTitle, chapterSlug }
+
+Update ChatKit Integration:
+- Pass chapterContext via ChatKit provider props
+- Show chapter in chat header/badge
+- Send chapter_context in API requests
+
+Update Backend:
+- Accept chapter_context in ChatRequest schema
+- Filter Qdrant search by chapter_id if provided
+- Prioritize results from current chapter
+
+Use frontend-integration agent.
+```
+
+**Prompt 2: Theme Matching & Testing**
+```
+Match Docusaurus theme and test:
+
+1. ChatKit styling configuration:
+   - Custom theme to match Docusaurus variables:
+     * --ifm-color-primary
+     * --ifm-background-color
+     * --ifm-font-color-base
+   - Support dark mode via Docusaurus theme toggle
+
+2. Production API URL:
+   - Create config/api.ts
+   - Use environment variables
+   - Switch based on NODE_ENV
+
+3. End-to-end tests:
+   - ChatKit appears on all pages
+   - Selected text opens ChatKit
+   - Chapter context passed correctly
+   - Sources displayed correctly
+   - Mobile responsive
+   - Message persistence
+
+Use test-runner agent for E2E tests.
+Use code-reviewer agent for final review.
+```
+
+#### **📦 Deliverables**
+- ✅ ChatKit on all Docusaurus pages
+- ✅ Chapter context auto-detected
+- ✅ Chapter filtering in RAG
+- ✅ Theme matches Docusaurus (light/dark)
+- ✅ Production API URL configured
+- ✅ End-to-end tests passing
+- ✅ Mobile responsive
+- ✅ Works on GitHub Pages
+
+#### **📁 Folder Structure**
+```
+frontend/src/
+├── hooks/
+│   ├── useTextSelection.ts
+│   └── useChapterContext.ts
+├── config/
+│   ├── chatkit.ts               # ChatKit configuration
+│   └── api.ts                   # API URL config
+└── theme/
+    └── Root.tsx                 # ChatKit provider + integration
+
+frontend/tests/
+└── e2e/
+    └── chatbot.spec.ts
+```
+
 ---
 
-### **Phase 2.5: Urdu Translation Integration**
+
+---
+
+### **Phase 2.6: Urdu Translation Integration**
 
 #### **📋 Description**
 Add "Translate to Urdu" button, implement translation with Gemini, cache translations, handle RTL text, preserve code blocks/equations.
@@ -858,102 +956,19 @@ frontend/src/
 
 ---
 
-### **Phase 2.6: ChatKit-Docusaurus Integration**
 
-#### **📋 Description**
-Final integration: ensure ChatKit appears on all pages, passes chapter context, matches Docusaurus theme, works on deployed site.
 
-#### **🛠️ Tech Stack**
-- **Integration**: Docusaurus theme system + ChatKit Provider
-- **Context**: ChatKit hooks and context
-- **Styling**: CSS variables for theme matching
 
-#### **🤖 Agents & Skills**
-- **Agent**: `frontend-integration` - Final integration
-- **Agent**: `test-runner` - End-to-end testing
-- **Agent**: `code-reviewer` - Final code review
 
-#### **💬 Prompts to Use**
 
-**Prompt 1: Chapter Context Detection**
-```
-Implement chapter context awareness with ChatKit:
 
-Hook: frontend/src/hooks/useChapterContext.ts
-- Extract chapter_id from URL
-- Extract chapter_title from page h1
-- Return { chapterId, chapterTitle, chapterSlug }
 
-Update ChatKit Integration:
-- Pass chapterContext via ChatKit provider props
-- Show chapter in chat header/badge
-- Send chapter_context in API requests
 
-Update Backend:
-- Accept chapter_context in ChatRequest schema
-- Filter Qdrant search by chapter_id if provided
-- Prioritize results from current chapter
 
-Use frontend-integration agent.
-```
 
-**Prompt 2: Theme Matching & Testing**
-```
-Match Docusaurus theme and test:
 
-1. ChatKit styling configuration:
-   - Custom theme to match Docusaurus variables:
-     * --ifm-color-primary
-     * --ifm-background-color
-     * --ifm-font-color-base
-   - Support dark mode via Docusaurus theme toggle
 
-2. Production API URL:
-   - Create config/api.ts
-   - Use environment variables
-   - Switch based on NODE_ENV
 
-3. End-to-end tests:
-   - ChatKit appears on all pages
-   - Selected text opens ChatKit
-   - Chapter context passed correctly
-   - Sources displayed correctly
-   - Translation works (Urdu button)
-   - Mobile responsive
-   - Message persistence
-
-Use test-runner agent for E2E tests.
-Use code-reviewer agent for final review.
-```
-
-#### **📦 Deliverables**
-- ✅ ChatKit on all Docusaurus pages
-- ✅ Chapter context auto-detected
-- ✅ Chapter filtering in RAG
-- ✅ Theme matches Docusaurus (light/dark)
-- ✅ Production API URL configured
-- ✅ End-to-end tests passing
-- ✅ Mobile responsive
-- ✅ Works on GitHub Pages
-
-#### **📁 Folder Structure**
-```
-frontend/src/
-├── hooks/
-│   ├── useTextSelection.ts
-│   └── useChapterContext.ts
-├── config/
-│   ├── chatkit.ts               # ChatKit configuration
-│   └── api.ts                   # API URL config
-└── theme/
-    └── Root.tsx                 # ChatKit provider + integration
-
-frontend/tests/
-└── e2e/
-    └── chatbot.spec.ts
-```
-
----
 
 ## **BONUS FEATURES** (After MVP - Optional Auth Phase)
 

@@ -105,19 +105,98 @@ class RAGService:
     ) -> bool:
         """Validate that answer citations match retrieved chunks.
 
+        Uses flexible matching to account for different citation formats.
+        Patterns supported:
+        - "Chapter X, Section Y"
+        - "Section Y"
+        - "Chapter X"
+
         Args:
             answer: Generated answer text
             retrieved_chunks: Retrieved chunks from search
 
         Returns:
-            True if citations are grounded, False if hallucinated
+            True if at least one citation is grounded, False if none found or all hallucinated
         """
-        # Extract citations from answer (format: "Chapter X, Section Y")
-        citation_pattern = r"Chapter\s+([a-zA-Z0-9]+),?\s+Section\s+(\d+)"
-        citations = re.findall(citation_pattern, answer)
+        # Build set of retrieved (chapter_id, section_number) tuples
+        retrieved_ids = {}  # Dict for more flexible lookup
+        retrieved_chapters = set()
+        retrieved_sections = set()
 
-        if not citations:
-            # No citations found - mark as uncertain
+        for chunk in retrieved_chunks:
+            payload = chunk.get("payload", {})
+            chapter_id = payload.get("chapter_id", "").lower()
+            section_num = payload.get("section_number", 0)
+            section_title = payload.get("section_title", "").lower()
+
+            if chapter_id:
+                retrieved_chapters.add(chapter_id)
+                retrieved_ids[(chapter_id, str(section_num))] = True
+            if section_title:
+                retrieved_sections.add(section_title)
+
+        answer_lower = answer.lower()
+
+        # Try to find citations in order of specificity
+        # Pattern 1: "Chapter X, Section Y"
+        citation_pattern_specific = r"Chapter\s+([a-zA-Z0-9]+),?\s+Section\s+(\d+)"
+        specific_citations = re.findall(citation_pattern_specific, answer_lower)
+
+        if specific_citations:
+            for chapter_id, section_num in specific_citations:
+                if (chapter_id, section_num) in retrieved_ids:
+                    logger.info(
+                        f"Citation validated: Chapter {chapter_id}, Section {section_num}",
+                        extra={
+                            "operation": "validate_citations",
+                            "citation_type": "specific",
+                            "chapter_id": chapter_id,
+                            "section_num": section_num,
+                            "status": "valid",
+                        },
+                    )
+                    return True
+
+        # Pattern 2: "Section Y" or just section numbers mentioned
+        section_pattern = r"Section\s+(\d+)"
+        section_citations = re.findall(section_pattern, answer_lower)
+
+        if section_citations:
+            for section_num in section_citations:
+                # Check if this section exists in any retrieved chunk
+                for (ch_id, sec_num) in retrieved_ids.keys():
+                    if sec_num == section_num:
+                        logger.info(
+                            f"Citation validated: Section {section_num}",
+                            extra={
+                                "operation": "validate_citations",
+                                "citation_type": "section_only",
+                                "section_num": section_num,
+                                "status": "valid",
+                            },
+                        )
+                        return True
+
+        # Pattern 3: Chapter reference
+        chapter_pattern = r"Chapter\s+([a-zA-Z0-9]+)"
+        chapter_citations = re.findall(chapter_pattern, answer_lower)
+
+        if chapter_citations:
+            for chapter_id in chapter_citations:
+                if chapter_id in retrieved_chapters:
+                    logger.info(
+                        f"Citation validated: Chapter {chapter_id}",
+                        extra={
+                            "operation": "validate_citations",
+                            "citation_type": "chapter_only",
+                            "chapter_id": chapter_id,
+                            "status": "valid",
+                        },
+                    )
+                    return True
+
+        # If no citations found, still allow answer but mark as uncertain
+        if not (specific_citations or section_citations or chapter_citations):
             logger.warning(
                 "No citations found in answer",
                 extra={
@@ -128,37 +207,16 @@ class RAGService:
             )
             return False
 
-        # Build set of retrieved (chapter_id, section_number) tuples
-        retrieved_ids = set()
-        for chunk in retrieved_chunks:
-            payload = chunk.get("payload", {})
-            chapter_id = payload.get("chapter_id", "")
-            section_num = payload.get("section_number", 0)
-            retrieved_ids.add((chapter_id, str(section_num)))
-
-        # Check if all citations are grounded
-        for chapter_id, section_num in citations:
-            if (chapter_id, section_num) not in retrieved_ids:
-                logger.warning(
-                    f"Citation not found in retrieved chunks: Chapter {chapter_id}, Section {section_num}",
-                    extra={
-                        "operation": "validate_citations",
-                        "cited_chapter": chapter_id,
-                        "cited_section": section_num,
-                        "status": "ungrounded",
-                    },
-                )
-                return False
-
-        logger.info(
-            f"Citations validated: {len(citations)} citations grounded",
+        # Citations found but not grounded in retrieved chunks
+        logger.warning(
+            "Citations found but not grounded in retrieved chunks",
             extra={
                 "operation": "validate_citations",
-                "citation_count": len(citations),
-                "status": "valid",
+                "answer_length": len(answer),
+                "status": "ungrounded",
             },
         )
-        return True
+        return False
 
     async def answer_question(
         self,
@@ -216,12 +274,15 @@ class RAGService:
             # Calculate total latency
             total_latency_ms = (time.time() - pipeline_start) * 1000
 
-            # Create metadata
+            # Create metadata with all fields populated
             metadata = RAGMetadata(
                 confidence_score=confidence,
                 search_latency_ms=0,  # Will be set by caller
                 generation_latency_ms=generation_latency_ms,
                 total_latency_ms=total_latency_ms,
+                selected_text_boosted=False,  # Will be updated by caller if applicable
+                boost_factor=1.0,  # Default no boost
+                selected_text_terms=[],  # Will be updated by caller if applicable
             )
 
             # Log successful completion

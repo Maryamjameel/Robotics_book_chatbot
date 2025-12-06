@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { RAGRequest, RAGResponse, PageContext } from '../types/chatkit.types';
+import { RAGRequest, RAGResponse, PageContext, ChapterContext } from '../types/chatkit.types';
 import { apiService } from '../services/apiService';
 
 interface UseRAGAPIReturn {
@@ -15,7 +15,8 @@ interface UseRAGAPIReturn {
   sendQuestion: (
     question: string,
     selectedText?: string,
-    pageContext?: PageContext
+    pageContext?: PageContext,
+    chapterContext?: ChapterContext
   ) => Promise<RAGResponse | null>;
 
   /** Whether a request is currently in flight */
@@ -39,7 +40,8 @@ export function useRAGAPI(): UseRAGAPIReturn {
     async (
       question: string,
       selectedText?: string,
-      pageContext?: PageContext
+      pageContext?: PageContext,
+      chapterContext?: ChapterContext
     ): Promise<RAGResponse | null> => {
       // Reset error state before new request
       setError(null);
@@ -59,11 +61,17 @@ export function useRAGAPI(): UseRAGAPIReturn {
           return null;
         }
 
-        // Build request
+        // Build request with all optional context
         const request: RAGRequest = {
           question,
           ...(selectedText && { selectedText }),
           ...(pageContext && { pageContext }),
+          ...(chapterContext && {
+            chapter_context: {
+              chapter_id: chapterContext.chapterId,
+              chapter_title: chapterContext.chapterTitle,
+            },
+          }),
         };
 
         // Send to backend
