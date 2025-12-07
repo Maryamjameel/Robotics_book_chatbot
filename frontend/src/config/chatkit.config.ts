@@ -19,7 +19,7 @@ export const chatKitConfig: ChatKitConfig = {
   // Backend RAG API endpoint
   // Override via: REACT_APP_RAG_API_URL environment variable
   apiEndpoint:
-    process.env.REACT_APP_RAG_API_URL ||
+    (typeof process !== 'undefined' ? process.env?.REACT_APP_RAG_API_URL : undefined) ||
     'http://localhost:8000/api/v1/chat/ask',
 
   // Widget positioning on the page

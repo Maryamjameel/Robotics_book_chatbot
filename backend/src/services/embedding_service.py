@@ -1,13 +1,17 @@
-"""Embedding generation service using OpenAI API."""
+"""Embedding generation service using Google Gemini API."""
 
 import asyncio
 import time
 from typing import List
 
-from openai import OpenAI
+import google.generativeai as genai
 
 from ..config import config, logger
 from ..models import ChapterChunk, TextEmbedding
+
+
+# Configure Gemini API
+genai.configure(api_key=config.gemini_api_key)
 
 
 def embed_chunks(chunks: List[ChapterChunk]) -> List[TextEmbedding]:
@@ -64,7 +68,6 @@ def embed_batch(texts: List[str], chunk_ids: List[str], metadata_list: List[dict
         if not text or not text.strip():
             raise ValueError(f"Empty text at index {i}")
 
-    client = OpenAI(api_key=config.openai_api_key)
     embeddings = []
     last_error = None
 
@@ -72,25 +75,27 @@ def embed_batch(texts: List[str], chunk_ids: List[str], metadata_list: List[dict
     for attempt in range(config.max_retries):
         try:
             logger.info(
-                "Generating embeddings",
+                "Generating embeddings with Gemini",
                 extra={
                     "operation": "embed_batch",
                     "status": "in_progress",
                     "batch_size": len(texts),
                     "attempt": attempt + 1,
+                    "model": config.gemini_embedding_model,
                 },
             )
 
-            response = client.embeddings.create(
-                input=texts,
-                model=config.embedding_model,
-            )
+            # Generate embeddings for each text using Gemini
+            for i, text in enumerate(texts):
+                result = genai.embed_content(
+                    model=f"models/{config.gemini_embedding_model}",
+                    content=text,
+                    task_type="retrieval_document",
+                )
 
-            # Process response
-            for i, embedding_data in enumerate(response.data):
                 embedding = TextEmbedding(
                     chunk_id=chunk_ids[i],
-                    vector=embedding_data.embedding,
+                    vector=result['embedding'],
                     metadata=metadata_list[i],
                 )
                 embeddings.append(embedding)
@@ -108,6 +113,7 @@ def embed_batch(texts: List[str], chunk_ids: List[str], metadata_list: List[dict
 
         except Exception as e:
             last_error = e
+            embeddings = []  # Reset on failure
             if attempt < config.max_retries - 1:
                 # Calculate backoff: 2^attempt seconds
                 backoff = config.initial_backoff_seconds * (2**attempt)
@@ -144,7 +150,7 @@ async def embed_question(question: str) -> List[float]:
         question: Question text to embed
 
     Returns:
-        1536-dimensional embedding vector
+        768-dimensional embedding vector (Gemini text-embedding-004)
 
     Raises:
         RuntimeError: If embedding fails
@@ -153,7 +159,7 @@ async def embed_question(question: str) -> List[float]:
         loop = asyncio.get_event_loop()
         embedding = await asyncio.wait_for(
             loop.run_in_executor(None, _embed_question_sync, question),
-            timeout=5.0,
+            timeout=10.0,
         )
 
         logger.info(
@@ -198,11 +204,11 @@ def _embed_question_sync(question: str) -> List[float]:
         question: Text to embed
 
     Returns:
-        Embedding vector
+        768-dimensional embedding vector
     """
-    client = OpenAI(api_key=config.openai_api_key)
-    response = client.embeddings.create(
-        input=question,
-        model=config.embedding_model,
+    result = genai.embed_content(
+        model=f"models/{config.gemini_embedding_model}",
+        content=question,
+        task_type="retrieval_query",
     )
-    return response.data[0].embedding
+    return result['embedding']

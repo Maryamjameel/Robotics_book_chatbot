@@ -16,7 +16,7 @@ class GeminiService:
     def __init__(self):
         """Initialize Gemini service with API configuration."""
         self.api_key = config.gemini_api_key
-        self.model_name = config.gemini_model
+        self.model_name = config.gemini_chat_model
 
         # Configure Gemini API
         genai.configure(api_key=self.api_key)
@@ -68,7 +68,7 @@ You MUST cite at least one source for every factual claim in your answer."""
 
         start_time = time.time()
         attempt = 0
-        max_attempts = 2
+        max_attempts = 3  # Allow more retries for rate limit recovery
 
         while attempt < max_attempts:
             try:
@@ -136,9 +136,26 @@ ANSWER:"""
 
                 # Log specific error types
                 error_type = type(e).__name__
-                if "429" in str(e) or "quota" in str(e).lower():
+                if "429" in str(e) or "quota" in str(e).lower() or "resource" in str(e).lower():
+                    # Retry with exponential backoff for rate limits
+                    if attempt < max_attempts:
+                        wait_time = 2 ** attempt  # 2s, 4s backoff
+                        logger.warning(
+                            f"Rate limit hit, retrying in {wait_time}s (attempt {attempt}/{max_attempts})",
+                            extra={
+                                "operation": "gemini_generate",
+                                "request_id": request_id,
+                                "model": self.model_name,
+                                "attempt": attempt,
+                                "wait_time": wait_time,
+                                "status": "rate_limit_retry",
+                            },
+                        )
+                        time.sleep(wait_time)
+                        continue  # Retry the request
+
                     logger.error(
-                        "Rate limit exceeded",
+                        "Rate limit exceeded after retries",
                         extra={
                             "operation": "gemini_generate",
                             "request_id": request_id,

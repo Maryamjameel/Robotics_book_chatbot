@@ -13,8 +13,8 @@ export interface APIConfiguration {
 }
 
 export function getAPIConfig(): APIConfiguration {
-  const customURL = process.env.REACT_APP_API_URL;
-  const nodeEnv = (process.env.NODE_ENV || 'development') as Environment;
+  const customURL = typeof process !== 'undefined' ? process.env?.REACT_APP_API_URL : undefined;
+  const nodeEnv = (typeof process !== 'undefined' ? process.env?.NODE_ENV : 'development') as Environment;
 
   let baseURL: string;
   if (customURL) {
@@ -83,6 +83,6 @@ export function logAPIConfiguration(): void {
     isDevelopment: apiConfig.isDevelopment,
     isProduction: apiConfig.isProduction,
     isStaging: apiConfig.isStaging,
-    customURLSet: !!process.env.REACT_APP_API_URL,
+    customURLSet: typeof process !== 'undefined' ? !!process.env?.REACT_APP_API_URL : false,
   });
 }

@@ -8,12 +8,17 @@
 
 import { RAGRequest, RAGResponse } from '../types/chatkit.types';
 import { apiConfig } from '../../../config/api';
-import { chatKitConfig } from '../../config/chatkit.config';
+import { chatKitConfig } from '../../../config/chatkit.config';
+
+// Rate limiting: Track last request time to prevent hitting Gemini API limits
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL_MS = 5000; // 5 seconds between requests (Gemini free tier limit)
 
 /**
  * Send a question to the RAG backend and receive an answer
  * Implements 30-second timeout per FR-010 specification
  * Supports optional chapter context for filtering and re-ranking results
+ * RATE LIMITED: Enforces 5-second minimum interval between requests
  *
  * @param request - RAGRequest with question, optional context:
  *   - question: User question (required, 1-2000 chars)
@@ -28,12 +33,23 @@ import { chatKitConfig } from '../../config/chatkit.config';
  *   - metadata.chapter_filtered: Whether results were filtered by chapter
  *   - metadata.chapter_id: Chapter ID used for filtering (if applicable)
  *   - metadata.boost_factor: TF-IDF boost factor applied (1.0 = no boost)
- * @throws Error on network failure, timeout, or invalid response
+ * @throws Error on network failure, timeout, invalid response, or rate limiting
  */
 export async function sendQuestion(
   request: RAGRequest,
   timeoutMs: number = chatKitConfig.requestTimeoutMs
 ): Promise<RAGResponse> {
+  // Rate limiting check: Enforce minimum interval between requests
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+
+  if (lastRequestTime > 0 && timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
+    const waitTimeSeconds = Math.ceil((MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest) / 1000);
+    throw new Error(
+      `Please wait ${waitTimeSeconds} seconds before sending another question. This helps prevent rate limits.`
+    );
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -76,7 +92,13 @@ export async function sendQuestion(
       }
 
       // Map specific HTTP status codes to user-friendly messages
-      if (statusCode === 503 || statusCode === 502 || statusCode === 504) {
+      if (statusCode === 429) {
+        console.log("error ")
+
+        throw new Error(
+          'fasih Too many requests. Please wait 5 seconds before asking another question. This helps prevent API rate limits.'
+        );
+      } else if (statusCode === 503 || statusCode === 502 || statusCode === 504) {
         throw new Error(
           'Service unavailable. Please try again later.'
         );
@@ -106,6 +128,9 @@ export async function sendQuestion(
     ) {
       throw new Error('Invalid response format from server');
     }
+
+    // Update last request time on successful response
+    lastRequestTime = Date.now();
 
     return responseData;
   } catch (error) {
@@ -156,6 +181,10 @@ export async function healthCheck(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function getHealthUrl(): string {
+  return `${apiConfig.baseURL}/health`;
 }
 
 export const apiService = {

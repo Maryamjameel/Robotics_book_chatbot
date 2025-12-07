@@ -74,10 +74,10 @@ def parse_chapter(chapter_path: str, chapter_id: str) -> List[ChapterChunk]:
 
 def parse_all_chapters(chapters_dir: str) -> List[ChapterChunk]:
     """
-    Parse all markdown files in a directory and extract sections.
+    Parse all markdown files in a directory (recursively) and extract sections.
 
     Args:
-        chapters_dir: Directory containing markdown chapter files
+        chapters_dir: Directory containing markdown chapter files (searches recursively)
 
     Returns:
         List of all ChapterChunk objects from all chapters
@@ -94,12 +94,21 @@ def parse_all_chapters(chapters_dir: str) -> List[ChapterChunk]:
 
     all_chunks = []
 
-    # Find all markdown files
-    md_files = sorted(dir_path.glob("*.md"))
+    # Find all markdown files recursively (using **/*.md pattern)
+    md_files = sorted(dir_path.glob("**/*.md"))
 
     for md_file in md_files:
-        # Extract chapter ID from filename (e.g., "ch01.md" -> "ch01")
-        chapter_id = md_file.stem
+        # Skip backup/disabled files
+        if md_file.suffix != ".md" or ".backup" in md_file.name or ".disabled" in md_file.name:
+            continue
+
+        # Extract chapter ID from parent directory + filename
+        # e.g., "chapter-01/lesson-01-foundations.md" -> "chapter-01-lesson-01"
+        parent_name = md_file.parent.name if md_file.parent != dir_path else ""
+        if parent_name:
+            chapter_id = f"{parent_name}-{md_file.stem}"
+        else:
+            chapter_id = md_file.stem
 
         try:
             chunks = parse_chapter(str(md_file), chapter_id)

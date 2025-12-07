@@ -2,7 +2,7 @@
 
 import re
 from typing import Any, Dict, List, Optional
-from ..config import logger
+from src.config import logger
 
 # Common English stopwords to exclude from TF-IDF calculation
 STOPWORDS = {

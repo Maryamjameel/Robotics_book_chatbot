@@ -75,13 +75,10 @@ class Config:
         if env_path.exists():
             load_dotenv(env_path)
 
-        # OpenAI Configuration
-        self.openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-        self.embedding_model: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-
-        # Gemini LLM Configuration
+        # Google Gemini Configuration (for both embeddings and chat)
         self.gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-        self.gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        self.gemini_embedding_model: str = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
+        self.gemini_chat_model: str = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash")
 
         # Qdrant Configuration
         self.qdrant_url: str = os.getenv("QDRANT_URL", "http://localhost:6333")
@@ -102,19 +99,16 @@ class Config:
         self.log_file: str = os.getenv("LOG_FILE", "pipeline.log")
         self.log_to_console: bool = os.getenv("LOG_TO_CONSOLE", "true").lower() == "true"
 
-        # Vector Configuration
-        self.vector_size: int = 1536  # text-embedding-3-small dimension
+        # Vector Configuration (Gemini text-embedding-004 produces 768-dim vectors)
+        self.vector_size: int = 768
         self.distance_metric: str = "cosine"
 
     def validate(self) -> bool:
         """Validate critical configuration values."""
-        if not self.openai_api_key:
-            raise ValueError("OPENAI_API_KEY environment variable must be set")
-        if not self.qdrant_url:
-            raise ValueError("QDRANT_URL environment variable must be set")
-        # Gemini API key validation (critical for RAG endpoint)
         if not self.gemini_api_key:
             raise ValueError("GEMINI_API_KEY environment variable must be set")
+        if not self.qdrant_url:
+            raise ValueError("QDRANT_URL environment variable must be set")
         return True
 
 

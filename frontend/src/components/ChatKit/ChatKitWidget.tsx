@@ -13,7 +13,7 @@ import { usePageContext } from './hooks/usePageContext';
 import { useChapterContext } from './hooks/useChapterContext';
 import { useThemeContext } from './hooks/useThemeContext';
 import { useRAGAPI } from './hooks/useRAGAPI';
-import { chatKitConfig, constraints } from '../config/chatkit.config';
+import { chatKitConfig, constraints } from '../../config/chatkit.config';
 import './styles/chatkit.css';
 
 interface ChatKitWidgetProps {
@@ -39,6 +39,7 @@ function generateMessageId(): string {
  */
 export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
   // State management
+  const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [inputError, setInputError] = useState<string | null>(null);
@@ -72,17 +73,22 @@ export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
       const selectedText = customEvent.detail?.selectedText;
 
       if (selectedText && typeof selectedText === 'string') {
+        // Open the chat widget
+        setIsOpen(true);
+
         // Pre-fill input and selected text state
         setInput(selectedText);
         setSelectedText(selectedText);
 
         // Focus the input field for immediate typing/submission
-        const inputElement = document.querySelector('.chatkit-input') as HTMLTextAreaElement;
-        if (inputElement) {
-          inputElement.focus();
-          // Move cursor to end
-          inputElement.selectionStart = inputElement.selectionEnd = inputElement.value.length;
-        }
+        setTimeout(() => {
+          const inputElement = document.querySelector('.chatkit-input') as HTMLTextAreaElement;
+          if (inputElement) {
+            inputElement.focus();
+            // Move cursor to end
+            inputElement.selectionStart = inputElement.selectionEnd = inputElement.value.length;
+          }
+        }, 100);
       }
     };
 
@@ -271,91 +277,131 @@ export function ChatKitWidget({ className }: ChatKitWidgetProps): JSX.Element {
     );
   };
 
+  // Toggle chat open/closed
+  const toggleChat = useCallback(() => {
+    setIsOpen(prev => !prev);
+  }, []);
+
   // Don't render if session not loaded yet
   if (!session) {
     return (
-      <div className={`chatkit-widget loading ${className || ''}`}>
-        <div className="chatkit-loading">Initializing chat...</div>
+      <div className="chatkit-container">
+        <button
+          className="chatkit-toggle-button"
+          onClick={toggleChat}
+          aria-label="Open chat"
+          title="Chat with AI Assistant"
+        >
+          💬
+        </button>
       </div>
     );
   }
 
   return (
-    <div className={`chatkit-widget ${className || ''}`}>
-      {/* Chapter Context Badge */}
-      {renderChapterBadge()}
+    <div className={`chatkit-container ${className || ''}`}>
+      {/* Toggle Button - Always visible */}
+      <button
+        className={`chatkit-toggle-button ${isOpen ? 'chatkit-toggle-open' : ''}`}
+        onClick={toggleChat}
+        aria-label={isOpen ? 'Close chat' : 'Open chat'}
+        title={isOpen ? 'Close chat' : 'Chat with AI Assistant'}
+      >
+        {isOpen ? '✕' : '💬'}
+      </button>
 
-      {/* Messages Container */}
-      <div className="chatkit-messages">
-        {session.messages.length === 0 ? (
-          <div className="chatkit-empty">
-            <div className="empty-icon">💬</div>
-            <div className="empty-text">Ask me anything about the documentation</div>
+      {/* Chat Widget - Only visible when open */}
+      {isOpen && (
+        <div className="chatkit-widget">
+          {/* Header */}
+          <div className="chatkit-header">
+            <span className="chatkit-header-title">AI Assistant</span>
+            <button
+              className="chatkit-close-button"
+              onClick={toggleChat}
+              aria-label="Close chat"
+              title="Close chat"
+            >
+              ✕
+            </button>
           </div>
-        ) : (
-          <>
-            {session.messages.map(renderMessage)}
-            <div ref={messagesEndRef} />
-          </>
-        )}
 
-        {isLoading && (
-          <div className="chatkit-loading-indicator">
-            <div className="loading-spinner"></div>
-            <span>Thinking...</span>
+          {/* Chapter Context Badge */}
+          {renderChapterBadge()}
+
+          {/* Messages Container */}
+          <div className="chatkit-messages">
+            {session.messages.length === 0 ? (
+              <div className="chatkit-empty">
+                <div className="empty-icon">💬</div>
+                <div className="empty-text">Ask me anything about the documentation</div>
+              </div>
+            ) : (
+              <>
+                {session.messages.map(renderMessage)}
+                <div ref={messagesEndRef} />
+              </>
+            )}
+
+            {isLoading && (
+              <div className="chatkit-loading-indicator">
+                <div className="loading-spinner"></div>
+                <span>Thinking...</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Input Error Display */}
-      {inputError && (
-        <div className="chatkit-input-error">
-          ⚠️ {inputError}
+          {/* Input Error Display */}
+          {inputError && (
+            <div className="chatkit-input-error">
+              ⚠️ {inputError}
+            </div>
+          )}
+
+          {/* Input Container */}
+          <div className="chatkit-input-container">
+            <textarea
+              className="chatkit-input"
+              value={input}
+              onChange={e => {
+                setInput(e.target.value);
+                setInputError(null);
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask a question... (Shift+Enter for newline)"
+              disabled={isLoading}
+              maxLength={constraints.maxQuestionLength}
+            />
+
+            <div className="chatkit-controls">
+              <button
+                className="chatkit-button chatkit-send-button"
+                onClick={handleSendQuestion}
+                disabled={isLoading || !input.trim()}
+                title="Send question (Enter)"
+                aria-label="Send question"
+              >
+                {isLoading ? '⏳' : '→'}
+              </button>
+
+              <button
+                className="chatkit-button chatkit-clear-button"
+                onClick={clearHistory}
+                disabled={isLoading || session.messages.length === 0}
+                title="Clear chat history"
+                aria-label="Clear chat history"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+
+          {/* Character count indicator */}
+          <div className="chatkit-char-count">
+            {input.length} / {constraints.maxQuestionLength}
+          </div>
         </div>
       )}
-
-      {/* Input Container */}
-      <div className="chatkit-input-container">
-        <textarea
-          className="chatkit-input"
-          value={input}
-          onChange={e => {
-            setInput(e.target.value);
-            setInputError(null);
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask a question... (Shift+Enter for newline)"
-          disabled={isLoading}
-          maxLength={constraints.maxQuestionLength}
-        />
-
-        <div className="chatkit-controls">
-          <button
-            className="chatkit-button chatkit-send-button"
-            onClick={handleSendQuestion}
-            disabled={isLoading || !input.trim()}
-            title="Send question (Enter)"
-            aria-label="Send question"
-          >
-            {isLoading ? '⏳' : '→'}
-          </button>
-
-          <button
-            className="chatkit-button chatkit-clear-button"
-            onClick={clearHistory}
-            disabled={isLoading || session.messages.length === 0}
-            title="Clear chat history"
-            aria-label="Clear chat history"
-          >
-            🗑️
-          </button>
-        </div>
-      </div>
-
-      {/* Character count indicator */}
-      <div className="chatkit-char-count">
-        {input.length} / {constraints.maxQuestionLength}
-      </div>
     </div>
   );
 }

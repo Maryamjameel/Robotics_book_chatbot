@@ -18,23 +18,26 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# Import and include routers
-from src.api.v1.routes.chat import router as chat_router
-
-app.include_router(chat_router)
-
-# Configure CORS middleware
+# Configure CORS middleware FIRST (must be before including routers for preflight requests)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # Local development
+        "http://127.0.0.1:3000",  # Local development (IP)
         "http://localhost:8080",  # Alternative local port
+        "http://127.0.0.1:8080",  # Alternative local port (IP)
         "https://localhost",  # HTTPS local
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Import and include routers
+from src.api.v1.routes.chat import router as chat_router
+
+
+app.include_router(chat_router)
 
 
 # Custom exception handlers for error responses
@@ -120,7 +123,7 @@ async def startup_event() -> None:
             extra={
                 "operation": "startup",
                 "status": "success",
-                "gemini_model": config.gemini_model,
+                "gemini_model": config.gemini_chat_model,
                 "collection_name": config.collection_name,
             },
         )

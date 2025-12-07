@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional
 
 import google.generativeai as genai
 from qdrant_client import QdrantClient
-from qdrant_client.exceptions import UnexpectedResponse
 
 from ..config import config, logger
 
@@ -36,13 +35,13 @@ async def check_qdrant_health() -> Dict[str, Any]:
         loop = asyncio.get_event_loop()
         result = await asyncio.wait_for(
             loop.run_in_executor(None, _check_qdrant_sync),
-            timeout=5.0,
+            timeout=15.0,
         )
         return result
 
     except asyncio.TimeoutError:
         health_status["status"] = "unhealthy"
-        health_status["error"] = "Qdrant connection timeout (5s)"
+        health_status["error"] = "Qdrant connection timeout (15s)"
         logger.warning(
             "Qdrant health check timed out",
             extra={
@@ -79,7 +78,7 @@ def _check_qdrant_sync() -> Dict[str, Any]:
         client = QdrantClient(
             url=config.qdrant_url,
             api_key=config.qdrant_api_key,
-            timeout=5.0,
+            timeout=10.0,
         )
 
         # Get collection info
@@ -119,7 +118,7 @@ async def check_gemini_health() -> Dict[str, Any]:
     """
     health_status = {
         "status": "unknown",
-        "model_name": config.gemini_model,
+        "model_name": config.gemini_chat_model,
         "error": None,
     }
 
@@ -127,13 +126,13 @@ async def check_gemini_health() -> Dict[str, Any]:
         loop = asyncio.get_event_loop()
         result = await asyncio.wait_for(
             loop.run_in_executor(None, _check_gemini_sync),
-            timeout=5.0,
+            timeout=15.0,
         )
         return result
 
     except asyncio.TimeoutError:
         health_status["status"] = "unhealthy"
-        health_status["error"] = "Gemini API timeout (5s)"
+        health_status["error"] = "Gemini API timeout (15s)"
         logger.warning(
             "Gemini health check timed out",
             extra={
@@ -161,7 +160,7 @@ def _check_gemini_sync() -> Dict[str, Any]:
     """Synchronous Gemini API health check implementation."""
     health_status = {
         "status": "healthy",
-        "model_name": config.gemini_model,
+        "model_name": config.gemini_chat_model,
         "error": None,
     }
 
@@ -170,15 +169,19 @@ def _check_gemini_sync() -> Dict[str, Any]:
         genai.configure(api_key=config.gemini_api_key)
 
         # List available models to verify API access
-        models = genai.list_models()
+        models = list(genai.list_models())
         available_model_names = [model.name for model in models]
 
-        # Check if configured model is available
-        full_model_name = f"models/{config.gemini_model}"
-        if full_model_name not in available_model_names:
+        # Check if configured model is available (flexible match)
+        model_found = any(
+            config.gemini_chat_model in model_name
+            for model_name in available_model_names
+        )
+
+        if not model_found:
             health_status["status"] = "unhealthy"
             health_status["error"] = (
-                f"Model {config.gemini_model} not available in account"
+                f"Model {config.gemini_chat_model} not available in account"
             )
             return health_status
 
@@ -187,7 +190,7 @@ def _check_gemini_sync() -> Dict[str, Any]:
             extra={
                 "operation": "check_gemini_health",
                 "status": "healthy",
-                "model": config.gemini_model,
+                "model": config.gemini_chat_model,
             },
         )
 

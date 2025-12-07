@@ -63,7 +63,7 @@ def main():
             },
         )
 
-        print(f"Step 1 ✓ Parsed {len(chapters)} sections from chapters")
+        print(f"Step 1 [OK] Parsed {len(chapters)} sections from chapters")
 
         # Step 2: Generate embeddings
         logger.info(
@@ -89,7 +89,7 @@ def main():
             },
         )
 
-        print(f"Step 2 ✓ Generated {len(embeddings)} embeddings")
+        print(f"Step 2 [OK] Generated {len(embeddings)} embeddings")
 
         # Step 3: Initialize collection
         logger.info(
@@ -112,7 +112,7 @@ def main():
             },
         )
 
-        print(f"Step 3 ✓ Initialized Qdrant collection")
+        print(f"Step 3 [OK] Initialized Qdrant collection")
 
         # Step 4: Insert embeddings
         logger.info(
@@ -137,10 +137,10 @@ def main():
             },
         )
 
-        print(f"Step 4 ✓ Inserted {result.inserted}/{result.total} embeddings")
+        print(f"Step 4 [OK] Inserted {result.inserted}/{result.total} embeddings")
 
         if result.failed > 0:
-            print(f"⚠ Warning: {result.failed} embeddings failed")
+            print(f"[WARNING] {result.failed} embeddings failed")
 
         # Step 5: Verify (optional)
         if verify:
@@ -165,7 +165,7 @@ def main():
                 },
             )
 
-            print(f"Step 5 ✓ Verification completed")
+            print(f"Step 5 [OK] Verification completed")
             print(f"  Total points: {verification.total_points}")
             print(f"  Validity: {verification.checks['sample_valid_percentage']:.1f}%")
 
@@ -181,7 +181,7 @@ def main():
             },
         )
 
-        print("\n✓ Pipeline completed successfully!")
+        print("\n[SUCCESS] Pipeline completed successfully!")
         print(f"  Chapters parsed: {len(chapters)}")
         print(f"  Embeddings generated: {len(embeddings)}")
         print(f"  Embeddings inserted: {result.inserted}")

@@ -20,7 +20,7 @@ def initialize_collection(collection_name: Optional[str] = None) -> bool:
     Initialize or verify Qdrant collection configuration.
 
     Creates collection if it doesn't exist, with proper vector configuration:
-    - Vector size: 1536 (OpenAI text-embedding-3-small)
+    - Vector size: 768 (Google Gemini text-embedding-004)
     - Distance metric: COSINE
     - Payload indexes: chapter_id, section_number, section_title
 
@@ -221,7 +221,7 @@ def verify_insertion(
     Verify embeddings in Qdrant collection.
 
     Samples points and checks:
-    - Vector dimensions match (1536)
+    - Vector dimensions match (768)
     - Payload schema is consistent
     - Collection statistics
 
@@ -341,7 +341,7 @@ def search_chunks(
     question_embedding: List[float],
     collection_name: Optional[str] = None,
     top_k: int = 5,
-    relevance_threshold: float = 0.7,
+    relevance_threshold: float = 0.5,
     chapter_context: Optional[Dict[str, str]] = None,
     selected_text_terms: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
@@ -350,7 +350,7 @@ def search_chunks(
     Performs Qdrant vector search and optionally filters/re-ranks results by chapter context.
 
     Args:
-        question_embedding: 1536-dimensional embedding vector
+        question_embedding: 768-dimensional embedding vector
         collection_name: Name of the collection (uses config default if None)
         top_k: Number of top results to return (default 5)
         relevance_threshold: Minimum cosine similarity score (default 0.7)
@@ -384,19 +384,19 @@ def search_chunks(
             },
         )
 
-        # Perform vector search
-        search_results = client.search(
+        # Perform vector search using query_points (Qdrant v2.0+)
+        query_response = client.query_points(
             collection_name=coll_name,
-            query_vector=question_embedding,
-            query_filter=None,
+            query=question_embedding,
             limit=top_k * 3,  # Get extra results for chapter filtering and threshold
             with_payload=True,
         )
+        search_results = query_response.points
 
         # Convert Qdrant results to SearchResult objects and filter by threshold
         search_result_objects = []
         for result in search_results:
-            if result.score >= relevance_threshold:
+            if result.score and result.score >= relevance_threshold:
                 payload = dict(result.payload) if result.payload else {}
                 search_result_objects.append(
                     SearchResult(
