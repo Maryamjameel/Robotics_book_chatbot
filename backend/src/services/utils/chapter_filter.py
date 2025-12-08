@@ -28,6 +28,9 @@ class SearchResult(BaseModel):
     chapter_id: str
     """Chapter identifier"""
 
+    chapter_title: Optional[str] = "Unknown"
+    """Chapter title"""
+
     section_number: int
     """Section number within chapter"""
 

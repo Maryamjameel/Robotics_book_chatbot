@@ -36,14 +36,14 @@ class RAGService:
         """
         sources = []
         for chunk in retrieved_chunks:
-            payload = chunk.get("payload", {})
+            # Chunks are now direct dicts (not wrapped in payload)
             source = Source(
-                chapter_id=payload.get("chapter_id", "unknown"),
-                chapter_title=payload.get("chapter_title", "Unknown"),
-                section_number=payload.get("section_number", 0),
-                section_title=payload.get("section_title", "Unknown"),
-                excerpt=payload.get("text", "")[:500],  # Truncate excerpt to 500 chars
-                relevance_score=chunk.get("score", 0.0),
+                chapter_id=chunk.get("chapter_id", "unknown"),
+                chapter_title=chunk.get("chapter_title", "Unknown"),
+                section_number=chunk.get("section_number", 0),
+                section_title=chunk.get("section_title", "Unknown"),
+                excerpt=chunk.get("excerpt", "")[:500],  # Truncate excerpt to 500 chars
+                relevance_score=chunk.get("relevance_score", 0.0),
             )
             sources.append(source)
         return sources
@@ -59,15 +59,16 @@ class RAGService:
         """
         context_parts = []
         for i, chunk in enumerate(retrieved_chunks, 1):
-            payload = chunk.get("payload", {})
-            chapter_id = payload.get("chapter_id", "unknown")
-            section_num = payload.get("section_number", 0)
-            section_title = payload.get("section_title", "Unknown")
-            text = payload.get("text", "")
-            score = chunk.get("score", 0.0)
+            # Chunks are now direct dicts (not wrapped in payload)
+            chapter_id = chunk.get("chapter_id", "unknown")
+            chapter_title = chunk.get("chapter_title", "Unknown")
+            section_num = chunk.get("section_number", 0)
+            section_title = chunk.get("section_title", "Unknown")
+            text = chunk.get("excerpt", "")  # Use 'excerpt' field
+            score = chunk.get("relevance_score", 0.0)
 
             context_parts.append(
-                f"[{i}] Chapter {chapter_id}, Section {section_num} - {section_title} (relevance: {score:.2f})\n{text}"
+                f"[{i}] {chapter_title} - Chapter {chapter_id}, Section {section_num}: {section_title} (relevance: {score:.2f})\n{text}"
             )
 
         return "\n\n".join(context_parts)
@@ -226,6 +227,9 @@ class RAGService:
     ) -> ChatResponse:
         """Orchestrate RAG pipeline: format context -> generate -> validate -> score.
 
+        Always returns a ChatResponse, even if LLM generation fails.
+        In case of LLM failure, returns the sources with a helpful fallback message.
+
         Args:
             question: User's question
             retrieved_chunks: Retrieved chunks from vector search
@@ -236,21 +240,21 @@ class RAGService:
         """
         pipeline_start = time.time()
 
+        # Step 1: Extract and format sources (always do this first)
+        sources = self._extract_sources(retrieved_chunks)
+        context = self._format_context(retrieved_chunks)
+
+        # Step 2: Calculate average relevance
+        relevance_scores = [
+            chunk.get("score", 0.0) for chunk in retrieved_chunks
+        ]
+        average_relevance = (
+            sum(relevance_scores) / len(relevance_scores)
+            if relevance_scores
+            else 0.0
+        )
+
         try:
-            # Step 1: Extract and format sources
-            sources = self._extract_sources(retrieved_chunks)
-            context = self._format_context(retrieved_chunks)
-
-            # Step 2: Calculate average relevance
-            relevance_scores = [
-                chunk.get("score", 0.0) for chunk in retrieved_chunks
-            ]
-            average_relevance = (
-                sum(relevance_scores) / len(relevance_scores)
-                if relevance_scores
-                else 0.0
-            )
-
             # Step 3: Generate answer with rate limiting
             generation_start = time.time()
             async with self.gemini_semaphore:
@@ -301,18 +305,87 @@ class RAGService:
                 },
             )
 
-            return ChatResponse(answer=answer, sources=sources, metadata=metadata)
+            return ChatResponse(
+                answer=answer,
+                sources=sources,
+                confidence=confidence,
+                metadata=metadata
+            )
 
         except Exception as e:
-            total_latency_ms = (time.time() - pipeline_start) * 1000
-            logger.error(
-                f"RAG pipeline failed: {str(e)}",
+            # LLM generation failed - return fallback response with sources
+            generation_latency_ms = (time.time() - pipeline_start) * 1000
+            total_latency_ms = generation_latency_ms
+
+            logger.warning(
+                f"LLM generation failed, returning fallback response with sources: {str(e)}",
                 extra={
                     "operation": "rag_pipeline",
                     "request_id": request_id,
                     "total_latency_ms": total_latency_ms,
                     "error": str(e),
-                    "status": "failed",
+                    "source_count": len(sources),
+                    "status": "fallback",
                 },
             )
-            raise
+
+            # Create a helpful fallback message with source information
+            fallback_answer = self._create_fallback_answer(sources, question)
+
+            # Create metadata with lower confidence since we couldn't generate an answer
+            metadata = RAGMetadata(
+                confidence_score=0.6,  # Medium-low confidence for fallback
+                search_latency_ms=0,  # Will be set by caller
+                generation_latency_ms=generation_latency_ms,
+                total_latency_ms=total_latency_ms,
+                selected_text_boosted=False,
+                boost_factor=1.0,
+                selected_text_terms=[],
+            )
+
+            return ChatResponse(
+                answer=fallback_answer,
+                sources=sources,
+                confidence=0.6,
+                metadata=metadata
+            )
+
+    def _create_fallback_answer(self, sources: List[Source], question: str) -> str:
+        """Create a helpful fallback answer when LLM generation fails.
+
+        Args:
+            sources: List of relevant sources found
+            question: User's question
+
+        Returns:
+            Formatted fallback answer with source information
+        """
+        if not sources:
+            return (
+                "I apologize, but I'm experiencing technical difficulties generating a complete answer right now. "
+                "No relevant sources were found for your question. Please try rephrasing your question or try again in a moment."
+            )
+
+        # Build a helpful response with source excerpts
+        fallback_parts = [
+            "I apologize, but I'm experiencing technical difficulties generating a complete answer right now. "
+            "However, I found the following relevant content from the robotics textbook that may help answer your question:\n"
+        ]
+
+        for i, source in enumerate(sources[:3], 1):  # Show top 3 sources
+            fallback_parts.append(
+                f"\n**{i}. {source.chapter_title} - Chapter {source.chapter_id}, Section {source.section_number}**"
+            )
+            if source.section_title:
+                fallback_parts.append(f"\n*{source.section_title}*")
+
+            # Include a preview of the content
+            excerpt_preview = source.excerpt[:300] + "..." if len(source.excerpt) > 300 else source.excerpt
+            fallback_parts.append(f"\n{excerpt_preview}\n")
+
+        fallback_parts.append(
+            "\nPlease review the sources above for detailed information. "
+            "You can also try asking your question again in a moment, or rephrase it for better results."
+        )
+
+        return "".join(fallback_parts)

@@ -1,5 +1,6 @@
 """Gemini LLM service for RAG answer generation."""
 
+import asyncio
 import json
 import logging
 import time
@@ -49,7 +50,7 @@ You MUST cite at least one source for every factual claim in your answer."""
     async def generate_answer(
         self, context: str, question: str, request_id: Optional[str] = None
     ) -> str:
-        """Generate answer using Gemini LLM.
+        """Generate answer using Gemini LLM with robust retry logic.
 
         Args:
             context: Formatted context from retrieved chunks
@@ -61,17 +62,22 @@ You MUST cite at least one source for every factual claim in your answer."""
 
         Raises:
             ValueError: If API key is missing
-            RuntimeError: If LLM generation fails
+            RuntimeError: If LLM generation fails after all retries
         """
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY not configured")
 
         start_time = time.time()
         attempt = 0
-        max_attempts = 3  # Allow more retries for rate limit recovery
+        max_attempts = 5  # Increased retries for better resilience
+        last_error = None
 
         while attempt < max_attempts:
             try:
+                # Import and acquire global rate limiter BEFORE API call
+                from .rate_limiter import gemini_rate_limiter
+                await gemini_rate_limiter.acquire()
+
                 attempt += 1
 
                 # Construct the full prompt
@@ -88,7 +94,22 @@ ANSWER:"""
                 response = self.model.generate_content(prompt)
 
                 if not response or not response.text:
-                    raise RuntimeError("Empty response from Gemini API")
+                    last_error = "Empty response from Gemini API"
+                    if attempt < max_attempts:
+                        wait_time = min(2 ** (attempt - 1), 8)  # Cap at 8 seconds
+                        logger.warning(
+                            f"Empty response, retrying in {wait_time}s (attempt {attempt}/{max_attempts})",
+                            extra={
+                                "operation": "gemini_generate",
+                                "request_id": request_id,
+                                "attempt": attempt,
+                                "wait_time": wait_time,
+                                "status": "empty_response_retry",
+                            },
+                        )
+                        await asyncio.sleep(wait_time)
+                        continue
+                    raise RuntimeError(last_error)
 
                 answer = response.text.strip()
                 latency_ms = (time.time() - start_time) * 1000
@@ -103,43 +124,75 @@ ANSWER:"""
                         "question_length": len(question),
                         "answer_length": len(answer),
                         "latency_ms": latency_ms,
+                        "attempts": attempt,
                         "status": "success",
                     },
                 )
 
                 return answer
 
-            except (
-                json.JSONDecodeError,
-                KeyError,
-                AttributeError,
-            ) as e:
+            except (json.JSONDecodeError, KeyError, AttributeError) as e:
+                last_error = e
                 latency_ms = (time.time() - start_time) * 1000
-                logger.warning(
-                    f"Attempt {attempt} failed: {type(e).__name__}",
-                    extra={
-                        "operation": "gemini_generate",
-                        "request_id": request_id,
-                        "model": self.model_name,
-                        "attempt": attempt,
-                        "latency_ms": latency_ms,
-                        "error": str(e),
-                        "status": "retry",
-                    },
-                )
 
-                if attempt >= max_attempts:
-                    raise RuntimeError(f"Gemini API failed after {max_attempts} attempts: {str(e)}")
+                if attempt < max_attempts:
+                    wait_time = min(2 ** (attempt - 1), 8)  # Exponential backoff, capped at 8s
+                    logger.warning(
+                        f"Attempt {attempt} failed: {type(e).__name__}, retrying in {wait_time}s",
+                        extra={
+                            "operation": "gemini_generate",
+                            "request_id": request_id,
+                            "model": self.model_name,
+                            "attempt": attempt,
+                            "latency_ms": latency_ms,
+                            "error": str(e),
+                            "wait_time": wait_time,
+                            "status": "retry",
+                        },
+                    )
+                    await asyncio.sleep(wait_time)
+                    continue
 
             except Exception as e:
+                last_error = e
                 latency_ms = (time.time() - start_time) * 1000
-
-                # Log specific error types
                 error_type = type(e).__name__
-                if "429" in str(e) or "quota" in str(e).lower() or "resource" in str(e).lower():
-                    # Retry with exponential backoff for rate limits
+                error_str = str(e).lower()
+
+                # Check for non-retryable errors (configuration/authentication issues)
+                if "404" in str(e) or "not found" in error_str:
+                    logger.error(
+                        "Model not found - configuration error, not retrying",
+                        extra={
+                            "operation": "gemini_generate",
+                            "request_id": request_id,
+                            "model": self.model_name,
+                            "latency_ms": latency_ms,
+                            "error": str(e),
+                            "status": "model_not_found",
+                        },
+                    )
+                    raise RuntimeError(f"Model configuration error: {str(e)}")
+
+                # Check for authentication errors
+                if "401" in str(e) or "403" in str(e) or "unauthorized" in error_str or "forbidden" in error_str or "api key" in error_str:
+                    logger.error(
+                        "Authentication error - invalid API key, not retrying",
+                        extra={
+                            "operation": "gemini_generate",
+                            "request_id": request_id,
+                            "model": self.model_name,
+                            "latency_ms": latency_ms,
+                            "error": str(e),
+                            "status": "auth_error",
+                        },
+                    )
+                    raise RuntimeError(f"Authentication error: Invalid or missing API key")
+
+                # Check for rate limit errors
+                if "429" in str(e) or "quota" in error_str or "resource" in error_str or "rate" in error_str:
                     if attempt < max_attempts:
-                        wait_time = 2 ** attempt  # 2s, 4s backoff
+                        wait_time = min(2 ** attempt, 16)  # Longer backoff for rate limits, cap at 16s
                         logger.warning(
                             f"Rate limit hit, retrying in {wait_time}s (attempt {attempt}/{max_attempts})",
                             extra={
@@ -151,47 +204,74 @@ ANSWER:"""
                                 "status": "rate_limit_retry",
                             },
                         )
-                        time.sleep(wait_time)
-                        continue  # Retry the request
+                        await asyncio.sleep(wait_time)
+                        continue
 
-                    logger.error(
-                        "Rate limit exceeded after retries",
+                # Check for timeout errors
+                elif "timeout" in error_str:
+                    if attempt < max_attempts:
+                        wait_time = min(2 ** (attempt - 1), 8)
+                        logger.warning(
+                            f"Timeout error, retrying in {wait_time}s (attempt {attempt}/{max_attempts})",
+                            extra={
+                                "operation": "gemini_generate",
+                                "request_id": request_id,
+                                "model": self.model_name,
+                                "attempt": attempt,
+                                "wait_time": wait_time,
+                                "status": "timeout_retry",
+                            },
+                        )
+                        await asyncio.sleep(wait_time)
+                        continue
+
+                # Check for temporary service errors
+                elif any(keyword in error_str for keyword in ["503", "unavailable", "overloaded", "capacity"]):
+                    if attempt < max_attempts:
+                        wait_time = min(2 ** attempt, 16)
+                        logger.warning(
+                            f"Service unavailable, retrying in {wait_time}s (attempt {attempt}/{max_attempts})",
+                            extra={
+                                "operation": "gemini_generate",
+                                "request_id": request_id,
+                                "model": self.model_name,
+                                "attempt": attempt,
+                                "wait_time": wait_time,
+                                "status": "service_unavailable_retry",
+                            },
+                        )
+                        await asyncio.sleep(wait_time)
+                        continue
+
+                # For other errors, retry with shorter backoff
+                if attempt < max_attempts:
+                    wait_time = min(2 ** (attempt - 1), 8)
+                    logger.warning(
+                        f"{error_type} error, retrying in {wait_time}s (attempt {attempt}/{max_attempts})",
                         extra={
                             "operation": "gemini_generate",
                             "request_id": request_id,
                             "model": self.model_name,
-                            "latency_ms": latency_ms,
-                            "error_type": "rate_limit",
-                            "status": "failed",
-                        },
-                    )
-                    raise RuntimeError("Rate limit exceeded. Please try again later.") from e
-
-                elif "timeout" in str(e).lower():
-                    logger.error(
-                        "Generation timeout",
-                        extra={
-                            "operation": "gemini_generate",
-                            "request_id": request_id,
-                            "model": self.model_name,
-                            "latency_ms": latency_ms,
-                            "error_type": "timeout",
-                            "status": "failed",
-                        },
-                    )
-                    raise RuntimeError("Generation request timed out") from e
-
-                else:
-                    logger.error(
-                        f"Gemini API error: {error_type}",
-                        extra={
-                            "operation": "gemini_generate",
-                            "request_id": request_id,
-                            "model": self.model_name,
-                            "latency_ms": latency_ms,
-                            "error_type": error_type,
+                            "attempt": attempt,
                             "error": str(e),
-                            "status": "failed",
+                            "wait_time": wait_time,
+                            "status": "generic_retry",
                         },
                     )
-                    raise RuntimeError(f"LLM service failed: {str(e)}") from e
+                    await asyncio.sleep(wait_time)
+                    continue
+
+        # All retries exhausted
+        latency_ms = (time.time() - start_time) * 1000
+        logger.error(
+            f"All {max_attempts} retry attempts exhausted",
+            extra={
+                "operation": "gemini_generate",
+                "request_id": request_id,
+                "model": self.model_name,
+                "latency_ms": latency_ms,
+                "last_error": str(last_error) if last_error else "Unknown",
+                "status": "all_retries_failed",
+            },
+        )
+        raise RuntimeError(f"LLM service failed after {max_attempts} attempts: {str(last_error)}")

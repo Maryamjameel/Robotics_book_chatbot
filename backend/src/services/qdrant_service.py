@@ -401,9 +401,10 @@ def search_chunks(
                 search_result_objects.append(
                     SearchResult(
                         chapter_id=payload.get("chapter_id", "unknown"),
+                        chapter_title=payload.get("chapter_title", "Unknown"),
                         section_number=payload.get("section_number", 0),
                         section_title=payload.get("section_title", ""),
-                        excerpt=payload.get("excerpt", ""),
+                        excerpt=payload.get("text", ""),  # Changed from 'excerpt' to 'text'
                         relevance_score=result.score,
                         id=str(result.id),
                     )
@@ -435,6 +436,7 @@ def search_chunks(
             {
                 "id": result.id,
                 "chapter_id": result.chapter_id,
+                "chapter_title": result.chapter_title,
                 "section_number": result.section_number,
                 "section_title": result.section_title,
                 "excerpt": result.excerpt,

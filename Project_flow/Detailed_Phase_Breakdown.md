@@ -880,9 +880,8 @@ Implement Urdu translation feature:
 
 Backend: backend/app/services/translation_service.py
 - translate_to_urdu() method
-- Use Gemini Pro with specialized prompt:
+- Use Gemini free with specialized prompt:
   * Keep code blocks unchanged
-  * Preserve LaTeX equations
   * Maintain markdown structure
   * Transliterate technical terms
 - Implement in-memory caching with Python dict

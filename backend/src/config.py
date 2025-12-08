@@ -78,7 +78,7 @@ class Config:
         # Google Gemini Configuration (for both embeddings and chat)
         self.gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
         self.gemini_embedding_model: str = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
-        self.gemini_chat_model: str = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash")
+        self.gemini_chat_model: str = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash")
 
         # Qdrant Configuration
         self.qdrant_url: str = os.getenv("QDRANT_URL", "http://localhost:6333")

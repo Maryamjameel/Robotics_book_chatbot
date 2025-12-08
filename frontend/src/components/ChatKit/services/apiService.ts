@@ -11,14 +11,15 @@ import { apiConfig } from '../../../config/api';
 import { chatKitConfig } from '../../../config/chatkit.config';
 
 // Rate limiting: Track last request time to prevent hitting Gemini API limits
+// Backend handles retry logic, so frontend only needs minimal throttling
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL_MS = 5000; // 5 seconds between requests (Gemini free tier limit)
+const MIN_REQUEST_INTERVAL_MS = 1000; // 1 second between requests (backend handles heavier rate limiting)
 
 /**
  * Send a question to the RAG backend and receive an answer
  * Implements 30-second timeout per FR-010 specification
  * Supports optional chapter context for filtering and re-ranking results
- * RATE LIMITED: Enforces 5-second minimum interval between requests
+ * RATE LIMITED: Enforces 1-second minimum interval between requests
  *
  * @param request - RAGRequest with question, optional context:
  *   - question: User question (required, 1-2000 chars)
@@ -45,8 +46,9 @@ export async function sendQuestion(
 
   if (lastRequestTime > 0 && timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
     const waitTimeSeconds = Math.ceil((MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest) / 1000);
+    const timeUnit = waitTimeSeconds === 1 ? 'second' : 'seconds';
     throw new Error(
-      `Please wait ${waitTimeSeconds} seconds before sending another question. This helps prevent rate limits.`
+      `Please wait ${waitTimeSeconds} ${timeUnit} before asking another question.`
     );
   }
 
@@ -93,10 +95,8 @@ export async function sendQuestion(
 
       // Map specific HTTP status codes to user-friendly messages
       if (statusCode === 429) {
-        console.log("error ")
-
         throw new Error(
-          'fasih Too many requests. Please wait 5 seconds before asking another question. This helps prevent API rate limits.'
+          'Too many requests. The backend is rate limited. Please wait a moment and try again.'
         );
       } else if (statusCode === 503 || statusCode === 502 || statusCode === 504) {
         throw new Error(
