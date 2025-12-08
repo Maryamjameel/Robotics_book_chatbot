@@ -33,13 +33,32 @@ export default function Root({ children }: RootProps): JSX.Element {
   const { selection } = useTextSelection();
 
   // Manage tooltip visibility and state
-  const { state: tooltipState, show: showTooltip, dismiss: dismissTooltip } = useSelectionTooltip();
+  const { state: tooltipState, show: showTooltip, dismiss: dismissTooltip, reset: resetTooltip } = useSelectionTooltip();
+
+  // Track previous selection to detect new selections
+  const previousSelectionRef = React.useRef<TextSelection | null>(null);
 
   /**
    * Handle new text selection - show tooltip at selection coordinates
    */
   React.useEffect(() => {
-    if (selection && !tooltipState.isDismissed) {
+    if (!selection) {
+      previousSelectionRef.current = null;
+      return;
+    }
+
+    // Check if this is a new selection (different from previous)
+    const isNewSelection =
+      !previousSelectionRef.current ||
+      selection.timestamp !== previousSelectionRef.current.timestamp ||
+      selection.text !== previousSelectionRef.current.text;
+
+    // Update the previous selection reference
+    previousSelectionRef.current = selection;
+
+    // Show tooltip if not dismissed, OR if this is a new selection
+    // (showTooltip internally resets isDismissed to false)
+    if (!tooltipState.isDismissed || isNewSelection) {
       // Calculate optimal position for tooltip based on selection location
       const bestPosition = getBestTooltipPosition(
         new DOMRect(selection.x, selection.y, 0, 0),
