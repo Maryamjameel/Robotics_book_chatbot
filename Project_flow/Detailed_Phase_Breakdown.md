@@ -855,105 +855,13 @@ frontend/tests/
 
 ---
 
-### **Phase 2.6: Urdu Translation Integration**
-
-#### **📋 Description**
-Add "Translate to Urdu" button, implement translation with Gemini, cache translations, handle RTL text, preserve code blocks/equations.
-
-#### **🛠️ Tech Stack**
-- **Translation**: Google Gemini Pro (FREE)
-- **Caching**: In-memory cache (or optional PostgreSQL for persistence)
-- **RTL Support**: CSS `direction: rtl`
-- **Frontend**: ChatKit integration + button component
-
-#### **🤖 Agents & Skills**
-- **Agent**: `urdu-academic-translator` ⭐ PRIMARY - High-quality Urdu translation
-- **Skill**: `Translation_Skill` ⭐ PRIMARY - Translation logic
-- **Agent**: `backend-development` - Translation API endpoint
-- **Skill**: `API_Design_Skill` - API design
+### **Phase 2.6: Urdu Translation feautre**
 
 #### **💬 Prompts to Use**
+Urdu Translation Feature: Add a frontend button '🌐 Translate to Urdu' that toggles chapter content between English and Urdu, preserves code blocks, supports RTL text, and uses Noto Nastaliq Urdu font.
 
-**Prompt 1: Backend Translation Service**
+Do not change anything else in the project."
 ```
-Implement Urdu translation feature:
-
-Backend: backend/app/services/translation_service.py
-- translate_to_urdu() method
-- Use Gemini free with specialized prompt:
-  * Keep code blocks unchanged
-  * Maintain markdown structure
-  * Transliterate technical terms
-- Implement in-memory caching with Python dict
-- Optional: Add Redis for distributed caching later
-
-Endpoint: backend/app/api/v1/routes/translation.py
-- POST /api/v1/translation/translate
-- Accept chapter_id or chapter_content
-- Return translated_content
-
-Use urdu-academic-translator agent and Translation_Skill.
-```
-
-**Prompt 2: Frontend Translation Button**
-```
-Create translation UI:
-
-Component: frontend/src/components/TranslateButton/TranslateButton.tsx
-- Button: "🌐 Translate to Urdu"
-- Loading state: "⏳ Translating..."
-- POST to translation endpoint
-- Pass urduContent to parent
-
-Swizzle DocItem: frontend/src/theme/DocItem/index.tsx
-- Add TranslateButton
-- Toggle between English/Urdu
-- RTL support: <div dir="rtl">
-- Preserve code blocks in LTR
-
-Styling:
-- Add Urdu font (Noto Nastaliq Urdu)
-- RTL text direction
-- Code blocks stay LTR in RTL context
-
-Use frontend-integration agent.
-Validate with urdu-academic-translator agent.
-```
-
-#### **📦 Deliverables**
-- ✅ Translation service with Gemini
-- ✅ Translation endpoint
-- ✅ In-memory translation caching
-- ✅ "Translate to Urdu" button on chapters
-- ✅ RTL text rendering
-- ✅ Code blocks preserved
-- ✅ LaTeX equations preserved
-- ✅ Toggle English/Urdu
-- ✅ Urdu font loaded
-- ✅ Loading state indicator
-
-#### **📁 Folder Structure**
-```
-backend/app/
-├── api/v1/routes/
-│   └── translation.py
-└── services/
-    └── translation_service.py
-
-frontend/src/
-├── components/
-│   └── TranslateButton/
-│       ├── TranslateButton.tsx
-│       └── TranslateButton.module.css
-├── theme/
-│   └── DocItem/
-│       ├── index.tsx            (swizzled)
-│       └── styles.module.css
-└── css/
-    └── custom.css               (Urdu font)
-```
-
----
 
 
 

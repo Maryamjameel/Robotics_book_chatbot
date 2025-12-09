@@ -184,7 +184,7 @@ function HomepageHeader() {
               transition={{duration: 0.8, delay: 0.5}}
             >
               A comprehensive guide to humanoid robotics, ROS 2, and intelligent control systems.
-              From kinematics to machine learning—build the future of robotics.
+              From kinematics to machine learning and build the future of robotics.
             </motion.p>
             <motion.div
               className={styles.heroButtons}
