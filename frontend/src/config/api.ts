@@ -22,11 +22,11 @@ export function getAPIConfig(): APIConfiguration {
   } else {
     switch (nodeEnv) {
       case 'production':
-        baseURL = 'https://api.yourdomain.com/api';
-        console.warn('[APIConfig] PRODUCTION mode detected but REACT_APP_API_URL not set.');
+        baseURL = 'https://maryamjamil-robotics-chatbot-api.hf.space/api';
+        console.log('[APIConfig] Using Hugging Face Spaces backend');
         break;
       case 'staging':
-        baseURL = 'https://staging-api.yourdomain.com/api';
+        baseURL = 'https://maryamjamil-robotics-chatbot-api.hf.space/api';
         break;
       case 'development':
       default:
