@@ -13,27 +13,13 @@ export interface APIConfiguration {
 }
 
 export function getAPIConfig(): APIConfiguration {
-  const customURL = typeof process !== 'undefined' ? process.env?.REACT_APP_API_URL : undefined;
   const nodeEnv = (typeof process !== 'undefined' ? process.env?.NODE_ENV : 'development') as Environment;
 
-  let baseURL: string;
-  if (customURL) {
-    baseURL = customURL;
-  } else {
-    switch (nodeEnv) {
-      case 'production':
-        baseURL = 'https://maryamjamil-robotics-chatbot-api.hf.space/api';
-        console.log('[APIConfig] Using Hugging Face Spaces backend');
-        break;
-      case 'staging':
-        baseURL = 'https://maryamjamil-robotics-chatbot-api.hf.space/api';
-        break;
-      case 'development':
-      default:
-        baseURL = 'http://localhost:8000/api';
-        break;
-    }
-  }
+  console.log('[APIConfig] Environment:', nodeEnv);
+
+  // Always use Hugging Face Spaces backend (deployed backend)
+  const baseURL = 'https://maryamjamil-robotics-chatbot-api.hf.space/api';
+  console.log('[APIConfig] Using Hugging Face Spaces backend:', baseURL);
 
   const config: APIConfiguration = {
     baseURL,
